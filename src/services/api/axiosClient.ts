@@ -1,0 +1,108 @@
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios'
+import { useAuthStore } from '@/store/auth.store'
+import { toast } from '@/shared/utils/toast'
+
+// API Configuration
+const API_BASE_URL = 'http://localhost:3000/api/v1'
+const REQUEST_TIMEOUT = 10000
+
+// Create axios instance
+const axiosClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Request interceptor
+axiosClient.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage (stored by ApiService)
+    const token = localStorage.getItem('token')
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Response interceptor
+axiosClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error: AxiosError) => {
+    // Skip user-facing errors for cancelled requests (e.g. React StrictMode cleanup)
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
+
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
+    
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      // Clear auth state and redirect to login
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      useAuthStore.getState().logout()
+      toast.error('Session expired. Please login again.')
+      window.location.href = '/login'
+    }
+    
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      toast.error('You do not have permission to perform this action.')
+    }
+    
+    // Handle 500 Server Error
+    if (error.response?.status === 500) {
+      toast.error('Server error. Please try again later.')
+    }
+    
+    // Handle network errors
+    if (!error.response) {
+      toast.error('Network error. Please check your connection.')
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
+// Request types
+export interface ApiResponse<T = any> {
+  success: boolean
+  message: string
+  data?: T
+  details?: any
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  message: string
+  data: {
+    items: T[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      pages: number
+    }
+  }
+}
+
+// HTTP methods
+export const httpMethods = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE',
+} as const
+
+export default axiosClient
