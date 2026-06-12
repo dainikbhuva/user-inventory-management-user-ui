@@ -1,12 +1,15 @@
 // API interceptor for handling authentication and error responses
 import { apiService } from '../services/api';
 
+let interceptorInstalled = false;
+
 // Function to set up global fetch interceptor
 export const setupApiInterceptor = () => {
-  // Store the original fetch function
-  const originalFetch = window.fetch;
+  if (interceptorInstalled) return;
+  interceptorInstalled = true;
 
-  // Override fetch with our interceptor
+  const originalFetch = window.fetch.bind(window);
+
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     // Only intercept requests to our API
     if (typeof input === 'string' && input.includes('/api/')) {

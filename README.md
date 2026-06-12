@@ -1,28 +1,34 @@
 # User Portal UI
 
-User-facing frontend for the inventory management system. Same design system as `admin-ui`, configured for regular users (user table login).
+User-facing frontend for company portal users. Same design as `admin-ui`.
 
-## Features (current)
+## Flow
 
-- Auth pages: Login, Signup, Forgot Password, Verify OTP, Reset Password
-- Protected dashboard after login
-- User API auth: `/api/v1/app/auth/*`
+1. **Admin creates company** → adds subscription (plan with module groups) → adds company user in admin panel.
+2. **Company user logs in** at `http://localhost:5174/login` with that email/password.
+3. **Or self signup** at `/signup` with company code — saves to `users` table under that company.
+4. **After login** → dashboard + sidebar loads modules from the company's active subscription plan.
 
-## Setup
+## Requirements for login
+
+- User exists in `users` table (`role: user` via company user or signup)
+- Company is `active`
+- Company has an **active subscription** with a plan that includes module groups
+
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Runs on **http://localhost:5174** (admin-ui uses 5173).
+Port: **5174**
 
-## Login
+## API endpoints used
 
-Use a user account with `role: user` from the users table. Login endpoint:
-
-`POST http://localhost:3000/api/v1/app/auth/login`
-
-## Environment
-
-Copy `.env.example` to `.env` and adjust API URL if needed.
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/app/auth/login` | Company user login |
+| `POST /api/v1/app/auth/register` | Signup (name, email, password, companyCode) |
+| `GET /api/v1/app/auth/profile` | User profile |
+| `GET /api/v1/app/menu` | Sidebar modules from subscription |

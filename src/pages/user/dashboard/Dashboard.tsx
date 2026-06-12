@@ -1,33 +1,11 @@
-import { LayoutDashboard, Package, ClipboardList, Bell } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../../shared/auth/useAuth';
+import { useMenu } from '../../../hooks/useMenu';
 import { UserLayout } from '../../../components/layout/Layout';
-
-const quickLinks = [
-  {
-    title: 'Inventory',
-    description: 'View and manage your stock items',
-    icon: Package,
-    iconBg: '#fef3c7',
-    iconColor: '#d97706',
-  },
-  {
-    title: 'Orders',
-    description: 'Track your recent orders',
-    icon: ClipboardList,
-    iconBg: '#dbeafe',
-    iconColor: '#2563eb',
-  },
-  {
-    title: 'Notifications',
-    description: 'Stay updated on account activity',
-    icon: Bell,
-    iconBg: '#ede9fe',
-    iconColor: '#7c3aed',
-  },
-];
 
 export const DashboardPage = () => {
   const { user } = useAuth();
+  const { groups, meta } = useMenu();
 
   const greeting =
     new Date().getHours() < 12
@@ -56,7 +34,9 @@ export const DashboardPage = () => {
             {user?.name || 'User'}
           </h2>
           <p style={{ color: 'var(--color-primary-foreground)', opacity: 0.65 }} className="text-sm mt-1">
-            Your personal workspace for inventory and daily operations.
+            {user?.companyName
+              ? `${user.companyName} workspace`
+              : 'Your personal workspace for inventory and daily operations.'}
           </p>
         </div>
         <div className="relative z-10 hidden sm:flex items-center gap-2 flex-shrink-0">
@@ -96,44 +76,61 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      <div
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-        }}
-        className="rounded-sm"
-      >
+      {meta.planName && (
         <div
-          style={{ borderBottom: '1px solid var(--color-border)' }}
-          className="px-5 py-4"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+          }}
+          className="rounded-sm p-5 mb-6"
         >
-          <h3 style={{ color: 'var(--color-text)' }} className="text-sm font-semibold">Coming Soon</h3>
-          <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5">
-            More modules will appear here as they are enabled for your account
+          <h3 style={{ color: 'var(--color-text)' }} className="text-sm font-semibold">Your plan: {meta.planName}</h3>
+          <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-1 mb-3">
+            Sidebar shows module groups assigned to this plan. Admin must enable groups on the plan and link modules under each group.
           </p>
-        </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          {quickLinks.map(({ title, description, icon: Icon, iconBg, iconColor }) => (
-            <div
-              key={title}
-              style={{
-                backgroundColor: 'var(--color-surface-2)',
-                border: '1px solid var(--color-border)',
-              }}
-              className="rounded-sm p-4 opacity-75"
-            >
-              <div
-                style={{ backgroundColor: iconBg }}
-                className="w-9 h-9 rounded-sm flex items-center justify-center mb-3"
-              >
-                <Icon style={{ color: iconColor }} className="w-4 h-4" />
-              </div>
-              <p style={{ color: 'var(--color-text)' }} className="text-sm font-semibold">{title}</p>
-              <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-1">{description}</p>
+          {meta.includedModuleGroups.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {meta.includedModuleGroups.map((group) => {
+                const visible = groups.some((g) => g.id === group.id);
+                return (
+                  <span
+                    key={group.id}
+                    style={{
+                      backgroundColor: visible ? 'var(--color-primary-soft)' : 'var(--color-surface-2)',
+                      color: visible ? 'var(--color-primary)' : 'var(--color-muted)',
+                      border: '1px solid var(--color-border)',
+                    }}
+                    className="text-xs font-medium px-2.5 py-1 rounded-sm"
+                  >
+                    {group.name}{!visible ? ' (no sidebar items)' : ''}
+                  </span>
+                );
+              })}
             </div>
-          ))}
+          ) : (
+            <p style={{ color: 'var(--color-muted)' }} className="text-sm">
+              No module groups on this plan. Ask admin to edit the plan and check module groups.
+            </p>
+          )}
         </div>
-      </div>
+      )}
+
+      {groups.length === 0 && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+          }}
+          className="rounded-sm"
+        >
+          <div className="px-5 py-8 text-center">
+            <p style={{ color: 'var(--color-text)' }} className="text-sm font-semibold">No modules in sidebar yet</p>
+            <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-2 max-w-md mx-auto">
+              Admin: add module groups to the company plan, create modules under those groups, and add module items for dropdown menus.
+            </p>
+          </div>
+        </div>
+      )}
     </UserLayout>
   );
 };

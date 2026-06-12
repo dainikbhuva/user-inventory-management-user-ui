@@ -42,7 +42,16 @@ export interface ProfileResponse {
     id: string
     name: string
     email: string
+    phone?: string
     status: string
+    companyId?: string
+    companyName?: string
+    companyCode?: string
+    role?: {
+      id: string
+      name: string
+      code: string
+    }
     createdAt?: string
     updatedAt?: string
   }

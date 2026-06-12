@@ -1,7 +1,24 @@
+export interface UserRole {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
+  companyId?: string;
+  companyName?: string;
+  companyCode?: string;
+  role?: UserRole;
+}
+
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  companyCode: string;
 }
 
 export interface AuthContextType {
@@ -9,7 +26,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (input: SignupInput) => Promise<void>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;

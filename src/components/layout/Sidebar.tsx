@@ -1,24 +1,169 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ChevronLeft, ChevronRight, UserCircle } from 'lucide-react';
+import { LayoutDashboard, ChevronLeft, ChevronRight, UserCircle, ChevronDown } from 'lucide-react';
+import { useMenu } from '../../hooks/useMenu';
+import { getModuleIcon } from '../../shared/utils/moduleIcons';
+import type { MenuItem } from '../../shared/types/menu.types';
 
 interface UserSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-const navItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-];
+const navLinkClass = (isActive: boolean) => `
+  relative flex items-center gap-3 rounded-sm px-3 py-2.5 flex-shrink-0
+  transition-all duration-150
+  ${!isActive ? 'hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]' : ''}
+`;
+
+const navStyle = (isActive: boolean) =>
+  isActive
+    ? { backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }
+    : { color: 'var(--color-muted)' };
+
+const FLYOUT_LEFT = 64;
 
 export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
   const location = useLocation();
+  const { groups, isLoading } = useMenu();
   const [tooltip, setTooltip] = useState<{ name: string; y: number } | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [flyout, setFlyout] = useState<{ item: MenuItem; y: number } | null>(null);
+  const hideFlyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMouseEnter = (name: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+  const isPathActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+  const isModuleActive = (item: MenuItem) => {
+    if (item.linkType === 'dropdown' && item.children?.length) {
+      return item.children.some((child) => location.pathname === child.path);
+    }
+    return isPathActive(item.path);
+  };
+
+  useEffect(() => {
+    for (const group of groups) {
+      for (const item of group.modules) {
+        if (item.linkType === 'dropdown' && item.children?.some((c) => location.pathname === c.path)) {
+          setOpenDropdown(item.id);
+          return;
+        }
+      }
+    }
+  }, [location.pathname, groups]);
+
+  useEffect(() => {
+    if (!collapsed) {
+      setTooltip(null);
+      setFlyout(null);
+    }
+  }, [collapsed]);
+
+  const clearHideFlyoutTimer = () => {
+    if (hideFlyoutTimer.current) {
+      clearTimeout(hideFlyoutTimer.current);
+      hideFlyoutTimer.current = null;
+    }
+  };
+
+  const showFlyout = (item: MenuItem, e: React.MouseEvent<HTMLElement>) => {
+    clearHideFlyoutTimer();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip(null);
+    setFlyout({ item, y: rect.top + rect.height / 2 });
+  };
+
+  const scheduleHideFlyout = () => {
+    clearHideFlyoutTimer();
+    hideFlyoutTimer.current = setTimeout(() => setFlyout(null), 120);
+  };
+
+  const showTooltip = (name: string, e: React.MouseEvent<HTMLElement>) => {
+    clearHideFlyoutTimer();
+    setFlyout(null);
     const rect = e.currentTarget.getBoundingClientRect();
     setTooltip({ name, y: rect.top + rect.height / 2 });
   };
+
+  const hideTooltip = () => setTooltip(null);
+
+  const renderModule = (item: MenuItem) => {
+    const Icon = getModuleIcon(item.code);
+    const hasChildren = item.linkType === 'dropdown' && item.children?.length;
+    const isActive = isModuleActive(item);
+    const isOpen = openDropdown === item.id;
+
+    if (hasChildren && collapsed) {
+      return (
+        <button
+          key={item.id}
+          type="button"
+          style={navStyle(isActive)}
+          className={`${navLinkClass(isActive)} w-full cursor-pointer`}
+          onMouseEnter={(e) => showFlyout(item, e)}
+          onMouseLeave={scheduleHideFlyout}
+          aria-label={item.name}
+          aria-haspopup="true"
+        >
+          <Icon className="w-[18px] h-[18px] flex-shrink-0 mx-auto" />
+        </button>
+      );
+    }
+
+    if (hasChildren && !collapsed) {
+      return (
+        <div key={item.id}>
+          <button
+            type="button"
+            onClick={() => setOpenDropdown(isOpen ? null : item.id)}
+            style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-muted)' }}
+            className="w-full relative flex items-center gap-3 rounded-sm px-3 py-2.5 flex-shrink-0
+              transition-all duration-150 hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)] cursor-pointer"
+          >
+            <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+            <span className="text-sm font-medium truncate flex-1 text-left">{item.name}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {isOpen && (
+            <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[var(--color-border)] pl-2">
+              {item.children!.map((child) => {
+                const childActive = location.pathname === child.path;
+                return (
+                  <Link
+                    key={child.id}
+                    to={child.path}
+                    style={navStyle(childActive)}
+                    className={`
+                      flex items-center gap-2 rounded-sm px-3 py-2 text-sm
+                      ${!childActive ? 'hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]' : ''}
+                    `}
+                  >
+                    {child.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={item.id}
+        to={item.path}
+        style={navStyle(isActive)}
+        className={navLinkClass(isActive)}
+        onMouseEnter={collapsed ? (e) => showTooltip(item.name, e) : undefined}
+        onMouseLeave={collapsed ? hideTooltip : undefined}
+      >
+        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+        {!collapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
+      </Link>
+    );
+  };
+
+  const dashboardActive = location.pathname === '/dashboard';
 
   return (
     <>
@@ -45,65 +190,49 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
           </div>
           {!collapsed && (
             <div className="overflow-hidden min-w-0">
-              <p
-                style={{ color: 'var(--color-text)' }}
-                className="font-semibold text-sm leading-none tracking-tight truncate"
-              >
+              <p style={{ color: 'var(--color-text)' }} className="font-semibold text-sm leading-none tracking-tight truncate">
                 UserPortal
               </p>
-              <p
-                style={{ color: 'var(--color-muted)' }}
-                className="text-xs mt-1 leading-none truncate"
-              >
+              <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-1 leading-none truncate">
                 User Panel
               </p>
             </div>
           )}
         </div>
 
-        {!collapsed && (
-          <p
-            style={{ color: 'var(--color-muted-2)' }}
-            className="text-[10px] font-semibold uppercase tracking-widest px-5 pt-5 pb-2 flex-shrink-0"
-          >
-            Main Menu
-          </p>
-        )}
-
-        <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-hidden flex flex-col justify-start">
+        <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto flex flex-col justify-start">
           {collapsed && <div className="pt-4 flex-shrink-0" />}
 
-          {navItems.map(({ name, href, icon: Icon }) => {
-            const isActive = location.pathname === href;
+          <Link
+            to="/dashboard"
+            style={navStyle(dashboardActive)}
+            className={navLinkClass(dashboardActive)}
+            onMouseEnter={collapsed ? (e) => showTooltip('Dashboard', e) : undefined}
+            onMouseLeave={collapsed ? hideTooltip : undefined}
+          >
+            <LayoutDashboard className="w-[18px] h-[18px] flex-shrink-0" />
+            {!collapsed && <span className="text-sm font-medium truncate">Dashboard</span>}
+          </Link>
 
-            return (
-              <Link
-                key={name}
-                to={href}
-                style={
-                  isActive
-                    ? { backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }
-                    : { color: 'var(--color-muted)' }
-                }
-                className={`
-                  relative flex items-center gap-3 rounded-sm px-3 py-2.5 flex-shrink-0
-                  transition-all duration-150
-                  ${!isActive ? 'hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)]' : ''}
-                `}
-                onMouseEnter={collapsed ? (e) => handleMouseEnter(name, e) : undefined}
-                onMouseLeave={collapsed ? () => setTooltip(null) : undefined}
-              >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!collapsed && <span className="text-sm font-medium truncate">{name}</span>}
-                {isActive && !collapsed && (
-                  <span
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: 'var(--color-primary-foreground)', opacity: 0.7 }}
-                  />
-                )}
-              </Link>
-            );
-          })}
+          {isLoading && !collapsed && (
+            <p className="px-3 py-2 text-xs text-muted">Loading menu...</p>
+          )}
+
+          {groups.map((group) => (
+            <div key={group.id} className="pt-3">
+              {!collapsed && (
+                <p
+                  style={{ color: 'var(--color-muted-2)' }}
+                  className="text-[10px] font-semibold uppercase tracking-widest px-3 pb-2 flex-shrink-0"
+                >
+                  {group.name}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.modules.map((item) => renderModule(item))}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div
@@ -118,9 +247,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
               transition-all duration-150 cursor-pointer"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : (
               <>
                 <ChevronLeft className="w-4 h-4" />
                 <span className="text-xs font-medium">Collapse</span>
@@ -130,12 +257,12 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
         </div>
       </aside>
 
-      {collapsed && tooltip && (
+      {collapsed && tooltip && !flyout && (
         <div
           style={{
             position: 'fixed',
             top: tooltip.y,
-            left: 76,
+            left: FLYOUT_LEFT + 12,
             transform: 'translateY(-50%)',
             backgroundColor: 'var(--color-surface)',
             color: 'var(--color-text)',
@@ -147,6 +274,53 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
           className="px-3 py-1.5 text-xs font-semibold rounded-sm whitespace-nowrap"
         >
           {tooltip.name}
+        </div>
+      )}
+
+      {collapsed && flyout?.item.children?.length && (
+        <div
+          style={{
+            position: 'fixed',
+            top: flyout.y,
+            left: FLYOUT_LEFT,
+            transform: 'translateY(-50%)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+            zIndex: 10000,
+            minWidth: '10rem',
+          }}
+          className="rounded-sm py-1.5"
+          onMouseEnter={clearHideFlyoutTimer}
+          onMouseLeave={scheduleHideFlyout}
+        >
+          <p
+            style={{
+              color: 'var(--color-muted-2)',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+            className="px-3 pb-2 mb-1 text-[10px] font-semibold uppercase tracking-widest truncate"
+          >
+            {flyout.item.name}
+          </p>
+          {flyout.item.children.map((child) => {
+            const childActive = location.pathname === child.path;
+            return (
+              <Link
+                key={child.id}
+                to={child.path}
+                onClick={() => setFlyout(null)}
+                style={
+                  childActive
+                    ? { backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }
+                    : { color: 'var(--color-text)' }
+                }
+                className="block px-3 py-2 text-sm font-medium hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary)] transition-colors"
+              >
+                {child.name}
+              </Link>
+            );
+          })}
         </div>
       )}
     </>

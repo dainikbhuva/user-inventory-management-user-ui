@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
-import { Mail, Lock, User, AlertCircle, Check, Users, Package } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, Check, Users, Package, Building2 } from 'lucide-react';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -83,6 +83,7 @@ const strengthMeta = [
 
 export const SignupPage = () => {
   const [fullName, setFullName] = useState('');
+  const [companyCode, setCompanyCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -103,7 +104,7 @@ export const SignupPage = () => {
     if (strength < 2) { setError('Please choose a stronger password.'); return; }
     setIsLoading(true);
     try {
-      await signup(email, password);
+      await signup({ name: fullName, email, password, companyCode: companyCode.trim().toLowerCase() });
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed. Please try again.');
@@ -153,6 +154,25 @@ export const SignupPage = () => {
                   autoComplete="name"
                 />
               </div>
+            </div>
+
+            {/* Company Code */}
+            <div>
+              <label className="block text-sm font-medium text-base-content mb-1.5">Company Code</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/50" />
+                <input
+                  type="text"
+                  className="input input-bordered w-full pl-10 focus:input-primary disabled:input-disabled"
+                  placeholder="your-company-code"
+                  value={companyCode}
+                  onChange={(e) => setCompanyCode(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  autoComplete="organization"
+                />
+              </div>
+              <p className="text-xs text-base-content/60 mt-1">Ask your company admin for this code</p>
             </div>
 
             {/* Email */}

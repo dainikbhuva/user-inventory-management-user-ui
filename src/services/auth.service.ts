@@ -8,8 +8,26 @@ export const authService = {
     return response.data
   },
 
+  async register(payload: {
+    name: string
+    email: string
+    password: string
+    companyCode: string
+  }): Promise<ApiResponse<LoginResponse>> {
+    const response = await axiosClient.post(API_ENDPOINTS.AUTH.REGISTER, payload)
+    return response.data
+  },
+
   async getProfile(signal?: AbortSignal): Promise<ApiResponse<ProfileResponse>> {
     const response = await axiosClient.get(API_ENDPOINTS.AUTH.PROFILE, { signal })
+    return response.data
+  },
+
+  async changePassword(payload: {
+    currentPassword: string
+    newPassword: string
+  }): Promise<ApiResponse> {
+    const response = await axiosClient.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, payload)
     return response.data
   },
 

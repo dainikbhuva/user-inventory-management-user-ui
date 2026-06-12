@@ -1,11 +1,10 @@
-// API service for user portal authentication
+import type { User } from '../shared/auth/types';
+import type { MenuData } from '../shared/types/menu.types';
+
 const API_BASE_URL = 'http://localhost:3000/api/v1';
 
-export interface ApiUser {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
+export interface ApiUser extends User {
+  status?: string;
 }
 
 export interface LoginResponse {
@@ -16,6 +15,12 @@ export interface LoginResponse {
     token: string;
     refreshToken?: string;
   };
+}
+
+export interface MenuResponse {
+  success: boolean;
+  message: string;
+  data: MenuData;
 }
 
 class ApiService {
@@ -40,10 +45,7 @@ class ApiService {
     return this.token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const headers: Record<string, string> = {
@@ -55,24 +57,19 @@ class ApiService {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
-    const config: RequestInit = {
-      ...options,
-      headers,
-    };
+    const response = await fetch(url, { ...options, headers });
 
-    try {
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
+
+    return response.json();
+  }
+
+  private storeAuth(data: LoginResponse['data']) {
+    this.setToken(data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -82,8 +79,25 @@ class ApiService {
     });
 
     if (response.success && response.data.token) {
-      this.setToken(response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      this.storeAuth(response.data);
+    }
+
+    return response;
+  }
+
+  async register(input: {
+    name: string;
+    email: string;
+    password: string;
+    companyCode: string;
+  }): Promise<LoginResponse> {
+    const response = await this.request<LoginResponse>('/app/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (response.success && response.data.token) {
+      this.storeAuth(response.data);
     }
 
     return response;
@@ -93,12 +107,13 @@ class ApiService {
     return this.request('/app/auth/profile');
   }
 
+  async getMenu(): Promise<MenuResponse> {
+    return this.request('/app/menu');
+  }
+
   async logout(): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await this.request<{ success: boolean; message: string }>('/app/auth/logout', {
-        method: 'POST',
-      });
-      return response;
+      return await this.request('/app/auth/logout', { method: 'POST' });
     } finally {
       this.clearToken();
     }
