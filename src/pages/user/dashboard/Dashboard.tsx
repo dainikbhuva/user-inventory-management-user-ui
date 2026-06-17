@@ -2,6 +2,7 @@ import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../../shared/auth/useAuth';
 import { useMenu } from '../../../hooks/useMenu';
 import { UserLayout } from '../../../components/layout/Layout';
+import { DashboardAnnouncements } from './DashboardAnnouncements';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
@@ -52,6 +53,8 @@ export const DashboardPage = () => {
         </div>
       </div>
 
+      <DashboardAnnouncements />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
         <div
           style={{
@@ -86,7 +89,7 @@ export const DashboardPage = () => {
         >
           <h3 style={{ color: 'var(--color-text)' }} className="text-sm font-semibold">Your plan: {meta.planName}</h3>
           <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-1 mb-3">
-            Sidebar shows module groups assigned to this plan. Admin must enable groups on the plan and link modules under each group.
+            Sidebar shows module groups assigned to this plan. If a group shows &quot;(no sidebar items)&quot;, either no modules exist under it or your role lacks view permission — open Role to Permission and enable View for those items.
           </p>
           {meta.includedModuleGroups.length > 0 ? (
             <div className="flex flex-wrap gap-2">

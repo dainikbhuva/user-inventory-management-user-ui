@@ -17,7 +17,7 @@ export const FormField = ({
   children,
   className,
 }: FormFieldProps) => (
-  <div className={cn(className)}>
+  <div className={cn('flex flex-col gap-1.5', className)}>
     <label className="text-sm font-medium text-body">
       {label}
       {required ? <span className="text-red-600"> *</span> : null}

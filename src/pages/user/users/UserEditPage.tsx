@@ -2,16 +2,17 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
-import { Input } from '../../../components/ui/Input';
-import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
-import { FormField } from '../../../components/ui/FormField';
-import { StatusToggle } from '../../../components/common/StatusToggle';
+import { UserForm, type UserFormValues } from './UserForm';
 import { portalUserService } from '../../../services/user.service';
 import { roleService } from '../../../services/role.service';
-import type { PortalRole, UserGender } from '../../../shared/types/portal.types';
+import { departmentService, designationService } from '../../../services/master.service';
+import type { PortalRole, PortalUserRecord, PortalMasterRecord, UserGender } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import { shiftService } from '../../../services/shift.service';
+import type { PortalShiftRecord } from '../../../shared/types/shift.types';
+import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
 
 const toDateInput = (value?: string) => (value ? value.slice(0, 10) : '');
 
@@ -25,35 +26,32 @@ export const UserEditPage = () => {
   const listPath = `/${moduleCode}/${itemCode}`;
 
   const [roles, setRoles] = useState<PortalRole[]>([]);
+  const [departments, setDepartments] = useState<PortalMasterRecord[]>([]);
+  const [designations, setDesignations] = useState<PortalMasterRecord[]>([]);
+  const [managers, setManagers] = useState<PortalUserRecord[]>([]);
+  const [shifts, setShifts] = useState<PortalShiftRecord[]>([]);
+  const [form, setForm] = useState<UserFormValues | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [form, setForm] = useState({
-    employeeCode: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    roleId: '',
-    department: '',
-    designation: '',
-    joiningDate: '',
-    gender: '' as '' | UserGender,
-    dateOfBirth: '',
-    address: '',
-    status: 'active' as 'active' | 'inactive',
-  });
 
   useEffect(() => {
     if (!userId) return;
     const load = async () => {
       try {
         setIsLoading(true);
-        const [user, roleList] = await Promise.all([
+        const [user, roleList, deptList, desigList, userList, shiftList] = await Promise.all([
           portalUserService.getUser(userId),
           roleService.getActiveRoles(),
+          departmentService.getActive(),
+          designationService.getActive(),
+          portalUserService.getUsers(),
+          shiftService.getActive(),
         ]);
         setRoles(roleList);
+        setDepartments(deptList);
+        setDesignations(desigList);
+        setManagers(userList);
+        setShifts(shiftList);
         setForm({
           employeeCode: user.employeeCode,
           firstName: user.firstName,
@@ -61,10 +59,13 @@ export const UserEditPage = () => {
           email: user.email,
           phone: user.phone ?? '',
           roleId: user.role.id,
-          department: user.department ?? '',
-          designation: user.designation ?? '',
+          departmentId: user.departmentId ?? '',
+          designationId: user.designationId ?? '',
+          employeeType: user.employeeType ?? '',
+          reportingManagerId: user.reportingManager?.id ?? '',
+          defaultShiftId: user.defaultShiftId ?? '',
           joiningDate: toDateInput(user.joiningDate),
-          gender: user.gender ?? '',
+          gender: (user.gender ?? '') as '' | UserGender,
           dateOfBirth: toDateInput(user.dateOfBirth),
           address: user.address ?? '',
           status: user.status,
@@ -81,7 +82,7 @@ export const UserEditPage = () => {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!userId) return;
+    if (!userId || !form) return;
 
     try {
       setIsSubmitting(true);
@@ -91,8 +92,11 @@ export const UserEditPage = () => {
         email: form.email.trim(),
         phone: form.phone.trim(),
         roleId: form.roleId,
-        department: form.department.trim() || undefined,
-        designation: form.designation.trim() || undefined,
+        departmentId: form.departmentId || null,
+        designationId: form.designationId || null,
+        employeeType: form.employeeType || null,
+        reportingManagerId: form.reportingManagerId || null,
+        defaultShiftId: form.defaultShiftId || null,
         joiningDate: form.joiningDate || undefined,
         gender: form.gender || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
@@ -108,147 +112,40 @@ export const UserEditPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !form) {
     return (
       <UserLayout title="Edit User" subtitle="Loading user details...">
-        <div className="flex h-48 items-center justify-center text-muted">Loading...</div>
+        <div className="flex h-48 w-full items-center justify-center text-muted">Loading...</div>
       </UserLayout>
     );
   }
 
   return (
+    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="edit" fallbackTo={listPath}>
     <UserLayout title="Edit User" subtitle="Update employee portal account">
-      <div className="mb-4">
+      <div className="mb-5">
         <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>
-          <ArrowLeft className="mr-2 h-4 w-4 inline" />
+          <ArrowLeft className="mr-2 inline h-4 w-4" />
           Back to users
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
-        <section className="rounded-sm border border-base bg-surface p-6 shadow-soft space-y-4">
-          <h2 className="text-lg font-semibold text-body">Personal information</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Employee code">
-              <Input value={form.employeeCode} disabled readOnly className="bg-surface-2" />
-              <p className="mt-1.5 text-xs text-muted">Employee code cannot be edited.</p>
-            </FormField>
-            <div />
-            <FormField label="First name" required>
-              <Input
-                value={form.firstName}
-                onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Last name" required>
-              <Input
-                value={form.lastName}
-                onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Email" required>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Mobile">
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Gender">
-              <Select
-                value={form.gender}
-                onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value as UserGender | '' }))}
-                disabled={isSubmitting}
-              >
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </Select>
-            </FormField>
-            <FormField label="Date of birth">
-              <Input
-                type="date"
-                value={form.dateOfBirth}
-                onChange={(e) => setForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-          </div>
-          <FormField label="Address">
-            <Input
-              value={form.address}
-              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-              disabled={isSubmitting}
-            />
-          </FormField>
-        </section>
-
-        <section className="rounded-sm border border-base bg-surface p-6 shadow-soft space-y-4">
-          <h2 className="text-lg font-semibold text-body">Employment details</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Role" required>
-              <Select
-                value={form.roleId}
-                onChange={(e) => setForm((p) => ({ ...p, roleId: e.target.value }))}
-                disabled={isSubmitting}
-              >
-                <option value="">Select role</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Department">
-              <Input
-                value={form.department}
-                onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Designation">
-              <Input
-                value={form.designation}
-                onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Joining date">
-              <Input
-                type="date"
-                value={form.joiningDate}
-                onChange={(e) => setForm((p) => ({ ...p, joiningDate: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-          </div>
-          <StatusToggle
-            checked={form.status === 'active'}
-            onChange={(checked) => setForm((p) => ({ ...p, status: checked ? 'active' : 'inactive' }))}
-            disabled={isSubmitting}
-          />
-        </section>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate(listPath)} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Update user'}
-          </Button>
-        </div>
-      </form>
+      <UserForm
+        mode="edit"
+        value={form}
+        roles={roles}
+        departments={departments}
+        designations={designations}
+        managers={managers}
+        shifts={shifts}
+        excludeManagerId={userId}
+        isSubmitting={isSubmitting}
+        onChange={setForm}
+        onCancel={() => navigate(listPath)}
+        onSubmit={handleSubmit}
+        submitLabel="Update user"
+      />
     </UserLayout>
+    </ModulePermissionGuard>
   );
 };

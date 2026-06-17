@@ -36,7 +36,7 @@ export const SlideOver = ({
 
       <div
         className={cn(
-          'absolute right-0 top-0 h-full w-full max-w-md bg-surface shadow-2xl border-l border-base transition-transform duration-300 overflow-y-auto',
+          'theme-scrollbar absolute right-0 top-0 h-full w-full max-w-md bg-surface shadow-2xl border-l border-base transition-transform duration-300 overflow-y-auto',
           open ? 'translate-x-0' : 'translate-x-full'
         )}
       >

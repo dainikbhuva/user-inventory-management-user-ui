@@ -15,10 +15,19 @@ export interface User {
 }
 
 export interface SignupInput {
-  name: string;
-  email: string;
-  password: string;
-  companyCode: string;
+  company: {
+    name: string;
+    code: string;
+    email: string;
+    phone?: string;
+    address?: string;
+  };
+  admin: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+  };
 }
 
 export interface AuthContextType {
@@ -28,8 +37,9 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   logout: () => void;
-  forgotPassword: (email: string) => Promise<void>;
-  verifyOTP: (email: string, otp: string) => Promise<void>;
-  resendOTP: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ debugOtp?: string }>;
+  verifyOTP: (email: string, otp: string) => Promise<string>;
+  resendOTP: (email: string) => Promise<{ debugOtp?: string }>;
+  resetPassword: (email: string, resetToken: string, password: string) => Promise<void>;
+  updateSessionUser: (patch: Partial<User>) => void;
 }

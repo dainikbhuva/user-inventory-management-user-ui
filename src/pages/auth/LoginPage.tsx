@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, Users, Package } from 'lucide-react';
 import { useAuth } from '../../shared/auth/useAuth';
+import { subscriptionService } from '../../services/subscription.service';
 
 const LeftPanel = () => (
   <aside className="hidden lg:flex flex-col justify-between p-12 bg-surface-3 relative overflow-hidden">
@@ -68,7 +69,13 @@ export const LoginPage = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      try {
+        const subResponse = await subscriptionService.getCurrent();
+        const sub = subResponse.data;
+        navigate(sub?.isExpired || sub?.status === 'expired' ? '/plan-expired' : '/dashboard');
+      } catch {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -77,7 +84,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
+    <div className="theme-scrollbar grid min-h-screen max-h-screen grid-cols-1 overflow-y-auto lg:grid-cols-[1.1fr_1fr]">
       <LeftPanel />
 
       <main className="flex items-center justify-center p-6 sm:p-10 min-h-screen bg-surface">

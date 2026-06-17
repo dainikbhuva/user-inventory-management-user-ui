@@ -57,6 +57,10 @@
     --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
     --shadow-input-focus: 0 0 0 3px rgba(37,99,235,0.12);
     --shadow-btn: 0 1px 2px rgba(37,99,235,0.3), 0 4px 12px rgba(37,99,235,0.2);
+
+    --scrollbar-track: #f1f5f9;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
   }
 
   [data-theme='dark'] {
@@ -70,6 +74,10 @@
     --color-muted-2: #cbd5e1;
     --color-primary-soft: rgba(59,130,246,0.18);
     --color-shadow: 0 1px 2px rgba(0,0,0,0.15), 0 6px 18px rgba(0,0,0,0.16);
+
+    --scrollbar-track: #1e293b;
+    --scrollbar-thumb: #475569;
+    --scrollbar-thumb-hover: #64748b;
   }
 
   *, *::before, *::after {
@@ -79,8 +87,8 @@
   }
 
   html, body, #root {
-    min-height: 100%;
     height: 100%;
+    overflow: hidden;
   }
 
   body {
@@ -93,6 +101,40 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+  }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  .theme-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 999px;
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    border: 2px solid var(--scrollbar-track);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
   }
 
   table.data-table {
@@ -109,6 +151,33 @@
 
   table.data-table tbody tr:last-child td {
     border-bottom: none;
+  }
+
+  table.permission-matrix {
+    table-layout: fixed;
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 52rem;
+  }
+
+  table.permission-matrix th,
+  table.permission-matrix td {
+    vertical-align: middle;
+  }
+
+  table.permission-matrix .permission-menu-cell {
+    vertical-align: top;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  table.permission-matrix .permission-action-cell {
+    width: 4.75rem;
+    min-width: 4.75rem;
+    max-width: 4.75rem;
+    text-align: center;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
   }
 }
 
@@ -144,4 +213,34 @@
 @keyframes toast-progress {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
+}
+
+/* Native date input — hide default indicator; calendar button is custom on the right */
+.date-input {
+  color-scheme: light;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  cursor: pointer;
+}
+
+.date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.date-input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.date-input:invalid::-webkit-datetime-edit {
+  color: var(--color-muted);
+}
+
+.date-input:not(:disabled)::-webkit-calendar-picker-indicator:hover {
+  opacity: 0;
 }

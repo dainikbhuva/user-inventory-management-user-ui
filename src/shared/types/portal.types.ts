@@ -1,5 +1,29 @@
 export type UserGender = 'male' | 'female' | 'other';
 
+export type EmployeeType =
+  | 'full_time'
+  | 'part_time'
+  | 'contract'
+  | 'intern'
+  | 'consultant';
+
+export interface PortalUserManager {
+  id: string;
+  name: string;
+  employeeCode: string;
+}
+
+export interface PortalMasterRecord {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  status: 'active' | 'inactive';
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PortalRole {
   id: string;
   name: string;
@@ -19,8 +43,14 @@ export interface PortalUserRecord {
   name: string;
   email: string;
   phone?: string;
+  departmentId?: string;
   department?: string;
+  designationId?: string;
   designation?: string;
+  employeeType?: EmployeeType;
+  reportingManager?: PortalUserManager;
+  defaultShiftId?: string;
+  defaultShift?: { id: string; name: string; code: string };
   joiningDate?: string;
   gender?: UserGender;
   dateOfBirth?: string;
@@ -39,8 +69,10 @@ export interface PermissionOption {
   key: string;
   label: string;
   moduleCode: string;
+  moduleName: string;
   itemCode?: string;
   groupName: string;
+  linkType: 'module-direct' | 'module-dropdown' | 'dropdown-item';
 }
 
 export interface CreatePortalUserPayload {
@@ -49,8 +81,11 @@ export interface CreatePortalUserPayload {
   email: string;
   phone?: string;
   roleId: string;
-  department?: string;
-  designation?: string;
+  departmentId?: string;
+  designationId?: string;
+  employeeType?: EmployeeType;
+  reportingManagerId?: string;
+  defaultShiftId?: string | null;
   joiningDate?: string;
   gender?: UserGender;
   dateOfBirth?: string;
@@ -66,8 +101,11 @@ export interface UpdatePortalUserPayload {
   email?: string;
   phone?: string;
   roleId?: string;
-  department?: string;
-  designation?: string;
+  departmentId?: string | null;
+  designationId?: string | null;
+  employeeType?: EmployeeType | null;
+  reportingManagerId?: string | null;
+  defaultShiftId?: string | null;
   joiningDate?: string;
   gender?: UserGender;
   dateOfBirth?: string;

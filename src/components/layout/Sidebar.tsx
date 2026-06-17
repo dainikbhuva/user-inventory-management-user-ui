@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ChevronLeft, ChevronRight, UserCircle, ChevronDown } from 'lucide-react';
 import { useMenu } from '../../hooks/useMenu';
 import { getModuleIcon } from '../../shared/utils/moduleIcons';
+import { filterMenuGroupsForSidebar } from '../../shared/utils/sidebarMenu';
 import type { MenuItem } from '../../shared/types/menu.types';
 
 interface UserSidebarProps {
@@ -26,6 +27,7 @@ const FLYOUT_LEFT = 64;
 export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
   const location = useLocation();
   const { groups, isLoading } = useMenu();
+  const sidebarGroups = useMemo(() => filterMenuGroupsForSidebar(groups), [groups]);
   const [tooltip, setTooltip] = useState<{ name: string; y: number } | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [flyout, setFlyout] = useState<{ item: MenuItem; y: number } | null>(null);
@@ -42,7 +44,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
   };
 
   useEffect(() => {
-    for (const group of groups) {
+    for (const group of sidebarGroups) {
       for (const item of group.modules) {
         if (item.linkType === 'dropdown' && item.children?.some((c) => location.pathname === c.path)) {
           setOpenDropdown(item.id);
@@ -50,7 +52,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
         }
       }
     }
-  }, [location.pathname, groups]);
+  }, [location.pathname, sidebarGroups]);
 
   useEffect(() => {
     if (!collapsed) {
@@ -200,7 +202,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
           )}
         </div>
 
-        <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto flex flex-col justify-start">
+        <nav className="theme-scrollbar flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto flex flex-col justify-start">
           {collapsed && <div className="pt-4 flex-shrink-0" />}
 
           <Link
@@ -218,7 +220,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
             <p className="px-3 py-2 text-xs text-muted">Loading menu...</p>
           )}
 
-          {groups.map((group) => (
+          {sidebarGroups.map((group) => (
             <div key={group.id} className="pt-3">
               {!collapsed && (
                 <p
@@ -233,6 +235,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
               </div>
             </div>
           ))}
+
         </nav>
 
         <div

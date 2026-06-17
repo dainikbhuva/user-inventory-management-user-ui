@@ -56,7 +56,7 @@ export const DataTable = <T extends object>({
   };
 
   return (
-    <div className="overflow-x-auto w-full">
+    <div className="theme-scrollbar overflow-x-auto w-full">
       <table className="data-table min-w-full border-collapse text-left text-sm">
         <thead>
           <tr className="bg-surface-2">
@@ -130,7 +130,7 @@ export const DataTable = <T extends object>({
                   <td
                     key={column.header}
                     className={cn(
-                      'px-4 py-2 text-sm text-body align-middle',
+                      'whitespace-nowrap px-4 py-2 text-sm text-body align-middle',
                       column.align === 'center' && 'text-center',
                       column.align === 'right' && 'text-right',
                       column.className

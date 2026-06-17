@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
-import { Menu, Bell, Settings, ChevronDown, User, KeyRound, LogOut } from 'lucide-react';
+import { useNotifications } from '../../shared/notifications/NotificationContext';
+import { useSubscription } from '../../shared/subscription/SubscriptionContext';
+import { formatNotificationTime } from '../../shared/utils/notificationTime';
+import { Menu, Bell, Settings, ChevronDown, User, KeyRound, LogOut, CreditCard } from 'lucide-react';
 
 interface UserHeaderProps {
   title?: string;
@@ -9,23 +12,17 @@ interface UserHeaderProps {
   onSidebarToggle: () => void;
 }
 
-const MOCK_NOTIFICATIONS = [
-  { id: 1, text: 'Welcome to your workspace', time: 'Just now', unread: true },
-  { id: 2, text: 'Your plan modules are active', time: '1 hr ago', unread: true },
-  { id: 3, text: 'Profile updated successfully', time: '2 hr ago', unread: false },
-];
-
 export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: UserHeaderProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { items, unreadCount, isLoading, refresh, markAsRead, markAllAsRead } = useNotifications();
+  const { subscription } = useSubscription();
 
   const [userOpen, setUserOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
   const userRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -42,6 +39,30 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
     navigate('/login');
   };
 
+  const toggleNotifications = () => {
+    setNotifOpen((open) => {
+      const next = !open;
+      if (next) void refresh();
+      return next;
+    });
+    setUserOpen(false);
+  };
+
+  const handleNotificationClick = async (id: string, link?: string) => {
+    const item = items.find((n) => n.id === id);
+    if (item && !item.isRead) {
+      await markAsRead(id);
+    }
+    setNotifOpen(false);
+    if (link) {
+      navigate(link);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAsRead();
+  };
+
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'US';
@@ -50,6 +71,8 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
     w-9 h-9 flex items-center justify-center rounded-sm cursor-pointer
     transition-colors duration-150
   `;
+
+  const previewItems = items.slice(0, 8);
 
   return (
     <header
@@ -82,8 +105,31 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
       </div>
 
       <div className="flex items-center gap-1">
+        {subscription ? (
+          <button
+            type="button"
+            onClick={() => navigate('/settings/billing')}
+            className="hidden md:flex max-w-[220px] items-center gap-2 rounded-sm border border-base bg-surface-2/60 px-3 py-1.5 text-left hover:bg-[var(--color-surface-2)] transition-colors"
+            title="View plan & billing"
+          >
+            <CreditCard className="h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p style={{ color: 'var(--color-text)' }} className="truncate text-xs font-semibold leading-none">
+                {subscription.plan.name}
+              </p>
+              <p style={{ color: 'var(--color-muted)' }} className="mt-0.5 truncate text-[10px]">
+                {subscription.isExpired
+                  ? 'Expired · Renew'
+                  : subscription.isTrial
+                    ? `Trial · ${subscription.daysRemaining}d left`
+                    : `${subscription.activeUserCount}/${subscription.seatCount} users · ${subscription.daysRemaining}d left`}
+              </p>
+            </div>
+          </button>
+        ) : null}
+
         <button
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/settings/general')}
           style={{ color: 'var(--color-muted)' }}
           className={`${iconBtn} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]`}
           aria-label="Settings"
@@ -93,7 +139,7 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
 
         <div ref={notifRef} className="relative">
           <button
-            onClick={() => { setNotifOpen((o) => !o); setUserOpen(false); }}
+            onClick={toggleNotifications}
             style={{
               color: notifOpen ? 'var(--color-primary)' : 'var(--color-muted)',
               backgroundColor: notifOpen ? 'var(--color-primary-soft)' : 'transparent',
@@ -128,34 +174,55 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
                   Notifications
                 </p>
                 {unreadCount > 0 && (
-                  <span
-                    style={{ color: 'var(--color-primary)', backgroundColor: 'var(--color-primary-soft)' }}
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  <button
+                    type="button"
+                    onClick={() => void handleMarkAllRead()}
+                    style={{ color: 'var(--color-primary)' }}
+                    className="text-xs font-semibold hover:opacity-80"
                   >
-                    {unreadCount} new
-                  </span>
+                    Mark all read
+                  </button>
                 )}
               </div>
 
-              <div className="max-h-64 overflow-y-auto" style={{ backgroundColor: 'var(--color-surface)' }}>
-                {MOCK_NOTIFICATIONS.map((n) => (
-                  <div
-                    key={n.id}
-                    style={{
-                      backgroundColor: n.unread ? 'var(--color-primary-soft)' : 'var(--color-surface)',
-                    }}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--color-surface-2)] cursor-pointer transition-colors"
-                  >
-                    <div
-                      style={{ backgroundColor: n.unread ? 'var(--color-primary)' : 'var(--color-border)' }}
-                      className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p style={{ color: 'var(--color-text)' }} className="text-sm leading-snug">{n.text}</p>
-                      <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5">{n.time}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="theme-scrollbar max-h-64 overflow-y-auto" style={{ backgroundColor: 'var(--color-surface)' }}>
+                {isLoading ? (
+                  <p style={{ color: 'var(--color-muted)' }} className="px-4 py-6 text-center text-sm">
+                    Loading...
+                  </p>
+                ) : previewItems.length === 0 ? (
+                  <p style={{ color: 'var(--color-muted)' }} className="px-4 py-6 text-center text-sm">
+                    No notifications yet
+                  </p>
+                ) : (
+                  previewItems.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => void handleNotificationClick(n.id, n.link)}
+                      style={{
+                        backgroundColor: !n.isRead ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                      }}
+                      className="flex w-full items-start gap-3 px-4 py-3 hover:bg-[var(--color-surface-2)] cursor-pointer transition-colors text-left"
+                    >
+                      <div
+                        style={{ backgroundColor: !n.isRead ? 'var(--color-primary)' : 'var(--color-border)' }}
+                        className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p style={{ color: 'var(--color-text)' }} className="text-sm font-medium leading-snug truncate">
+                          {n.title}
+                        </p>
+                        <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5 line-clamp-2">
+                          {n.message}
+                        </p>
+                        <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-1">
+                          {formatNotificationTime(n.createdAt)}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
 
               <div
@@ -167,6 +234,10 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
               >
                 <button
                   type="button"
+                  onClick={() => {
+                    setNotifOpen(false);
+                    navigate('/notifications');
+                  }}
                   style={{ color: 'var(--color-primary)' }}
                   className="w-full text-xs font-semibold text-center hover:opacity-80 transition-opacity cursor-pointer"
                 >
@@ -203,8 +274,8 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
               <p style={{ color: 'var(--color-text)' }} className="text-sm font-semibold leading-none truncate max-w-[120px]">
                 {user?.name || 'User'}
               </p>
-              <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5 truncate max-w-[120px]">
-                {user?.email || ''}
+              <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5 truncate max-w-[140px]">
+                {user?.companyName || user?.email || ''}
               </p>
             </div>
             <ChevronDown
@@ -305,3 +376,4 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
     </header>
   );
 };
+

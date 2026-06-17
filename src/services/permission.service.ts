@@ -4,6 +4,19 @@ import type { ApiResponse } from '../shared/types/api.types';
 import type { PermissionOption } from '../shared/types/portal.types';
 
 export const permissionService = {
+  async getMyPermissions(): Promise<{ permissions: string[]; isSuperAdmin: boolean; roleCode: string }> {
+    const response = await axiosClient.get<
+      ApiResponse<{ permissions: string[]; isSuperAdmin: boolean; roleCode: string }>
+    >(API_ENDPOINTS.PERMISSIONS.ME);
+    return (
+      response.data.data ?? {
+        permissions: [],
+        isSuperAdmin: false,
+        roleCode: '',
+      }
+    );
+  },
+
   async getOptions(): Promise<PermissionOption[]> {
     const response = await axiosClient.get<ApiResponse<{ items: PermissionOption[] }>>(
       API_ENDPOINTS.PERMISSIONS.LIST

@@ -1,6 +1,9 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import type { AuthContextType, SignupInput, User } from './types';
 import { apiService } from '../../services/api';
+import { authService } from '../../services/auth.service';
+import { menuService } from '../../services/menu.service';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -51,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiService.login(email, password);
 
       if (response.success && response.data.user) {
+        menuService.clearCache();
         const nextUser = mapApiUser(response.data.user);
         setUser(nextUser);
       } else {
@@ -70,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiService.register(input);
 
       if (response.success && response.data.user) {
+        menuService.clearCache();
         const nextUser = mapApiUser(response.data.user);
         setUser(nextUser);
       } else {
@@ -77,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Signup error:', error);
-      throw error;
+      throw new Error(getApiErrorMessage(error, 'Signup failed. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -89,68 +94,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      menuService.clearCache();
       setUser(null);
     }
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {
-    setIsLoading(true);
     try {
-      if (!email || !email.includes('@')) {
-        throw new Error('Please enter a valid email address.');
+      const response = await authService.forgotPassword(email);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to send verification code.');
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return { debugOtp: response.data?.debugOtp };
     } catch (error) {
-      console.error('Forgot password error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      throw new Error(getApiErrorMessage(error, 'Failed to send verification code.'));
     }
   }, []);
 
   const verifyOTP = useCallback(async (email: string, otp: string) => {
-    setIsLoading(true);
     try {
-      if (otp !== '123456') {
-        throw new Error('Invalid verification code. Please try again.');
+      const response = await authService.verifyOtp(email, otp);
+      if (!response.success || !response.data?.resetToken) {
+        throw new Error(response.message || 'Invalid verification code.');
       }
-      console.log('OTP verified for:', email);
+      return response.data.resetToken;
     } catch (error) {
-      console.error('OTP verification error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      throw new Error(getApiErrorMessage(error, 'Invalid verification code. Please try again.'));
     }
   }, []);
 
   const resendOTP = useCallback(async (email: string) => {
-    setIsLoading(true);
     try {
-      if (!email || !email.includes('@')) {
-        throw new Error('Please enter a valid email address.');
+      const response = await authService.resendOtp(email);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to resend verification code.');
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return { debugOtp: response.data?.debugOtp };
     } catch (error) {
-      console.error('Resend OTP error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      throw new Error(getApiErrorMessage(error, 'Failed to resend verification code.'));
     }
   }, []);
 
-  const resetPassword = useCallback(async (token: string, password: string) => {
-    setIsLoading(true);
+  const resetPassword = useCallback(async (email: string, resetToken: string, password: string) => {
     try {
-      if (!token || !password || password.length < 6) {
-        throw new Error('Invalid reset token or password.');
+      const response = await authService.resetPassword({ email, resetToken, password });
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to reset password.');
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
-      console.error('Reset password error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      throw new Error(getApiErrorMessage(error, 'Failed to reset password. Please try again.'));
     }
+  }, []);
+
+  const updateSessionUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const value: AuthContextType = {
@@ -164,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     verifyOTP,
     resendOTP,
     resetPassword,
+    updateSessionUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

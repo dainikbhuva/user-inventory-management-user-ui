@@ -40,6 +40,9 @@ export interface LoginResponse {
 export interface ProfileResponse {
   user: {
     id: string
+    employeeCode: string
+    firstName: string
+    lastName: string
     name: string
     email: string
     phone?: string
@@ -52,6 +55,18 @@ export interface ProfileResponse {
       name: string
       code: string
     }
+    department?: string
+    designation?: string
+    employeeType?: string
+    reportingManager?: {
+      id: string
+      name: string
+      employeeCode: string
+    }
+    joiningDate?: string
+    gender?: 'male' | 'female' | 'other'
+    dateOfBirth?: string
+    address?: string
     createdAt?: string
     updatedAt?: string
   }

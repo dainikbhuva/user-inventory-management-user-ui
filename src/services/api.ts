@@ -86,10 +86,19 @@ class ApiService {
   }
 
   async register(input: {
-    name: string;
-    email: string;
-    password: string;
-    companyCode: string;
+    company: {
+      name: string;
+      code: string;
+      email: string;
+      phone?: string;
+      address?: string;
+    };
+    admin: {
+      name: string;
+      email: string;
+      password: string;
+      phone?: string;
+    };
   }): Promise<LoginResponse> {
     const response = await this.request<LoginResponse>('/app/auth/register', {
       method: 'POST',

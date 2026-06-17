@@ -12,6 +12,10 @@ import {
   Map,
   MapPin,
   CreditCard,
+  CalendarDays,
+  CalendarCheck,
+  Clock,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,6 +24,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   inventory: Package,
   orders: ClipboardList,
   users: Users,
+  user: Users,
   companies: Building2,
   subscriptions: Receipt,
   modules: Boxes,
@@ -29,6 +34,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
   states: Map,
   cities: MapPin,
   plans: CreditCard,
+  leave: CalendarDays,
+  leaves: CalendarDays,
+  'leave-types': CalendarCheck,
+  attendance: Clock,
+  announcements: Megaphone,
+  announcement: Megaphone,
+  master: Boxes,
 };
 
 export const getModuleIcon = (code: string): LucideIcon => {

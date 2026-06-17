@@ -1,219 +1,381 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import type { FormEvent, ReactNode } from 'react';
+import { Briefcase, KeyRound, RefreshCw, UserRound } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { FormField } from '../../../components/ui/FormField';
 import { StatusToggle } from '../../../components/common/StatusToggle';
-import { useFormValidation } from '../../../hooks/useFormValidation';
-import { rules, type ValidationSchema } from '../../../shared/utils/validation';
-import { toast } from '../../../shared/utils/toast';
-import { getApiErrorMessage } from '../../../shared/utils/apiError';
-import type { PortalRole } from '../../../shared/types/portal.types';
+import type { PortalRole, PortalUserRecord, PortalMasterRecord, UserGender, EmployeeType } from '../../../shared/types/portal.types';
+import { EMPLOYEE_TYPES, EMPLOYEE_TYPE_LABELS } from '../../../shared/constants/employeeType';
+import type { PortalShiftRecord } from '../../../shared/types/shift.types';
 
-export interface UserFormData {
-  name: string;
-  phone: string;
+export interface UserFormValues {
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  phone: string;
   roleId: string;
-  password: string;
-  confirmPassword: string;
+  departmentId: string;
+  designationId: string;
+  employeeType: '' | EmployeeType;
+  reportingManagerId: string;
+  defaultShiftId: string;
+  joiningDate: string;
+  gender: '' | UserGender;
+  dateOfBirth: string;
+  address: string;
   status: 'active' | 'inactive';
 }
 
 interface UserFormProps {
-  value?: UserFormData;
+  mode: 'create' | 'edit';
+  value: UserFormValues;
   roles: PortalRole[];
-  onSubmit: (data: UserFormData) => Promise<void>;
+  departments: PortalMasterRecord[];
+  designations: PortalMasterRecord[];
+  managers: PortalUserRecord[];
+  shifts?: PortalShiftRecord[];
+  excludeManagerId?: string;
+  isLoadingRoles?: boolean;
+  isLoadingDepartments?: boolean;
+  isLoadingDesignations?: boolean;
+  isLoadingManagers?: boolean;
+  isSubmitting?: boolean;
+  autoEmployeeCode?: boolean;
+  isGeneratingCode?: boolean;
+  onChange: (value: UserFormValues) => void;
+  onAutoGenerateCode?: () => void;
+  onEmployeeCodeManualChange?: () => void;
   onCancel: () => void;
+  onSubmit: (event: FormEvent) => void;
   submitLabel?: string;
 }
 
-const defaultValues: UserFormData = {
-  name: '',
-  phone: '',
-  email: '',
-  roleId: '',
-  password: '',
-  confirmPassword: '',
-  status: 'active',
-};
+const SectionCard = ({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) => (
+  <section className="w-full rounded-sm border border-base bg-surface shadow-sm">
+    <div className="flex items-start gap-3 border-b border-base px-6 py-4">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-primary">
+        {icon}
+      </div>
+      <div>
+        <h2 className="text-base font-semibold text-body">{title}</h2>
+        {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
+      </div>
+    </div>
+    <div className="p-6">{children}</div>
+  </section>
+);
+
+const fieldGrid = 'grid w-full gap-5 sm:grid-cols-2 xl:grid-cols-3';
+const fullWidthField = 'sm:col-span-2 xl:col-span-3';
 
 export const UserForm = ({
+  mode,
   value,
   roles,
-  onSubmit,
+  departments,
+  designations,
+  managers,
+  shifts = [],
+  excludeManagerId,
+  isLoadingRoles = false,
+  isLoadingDepartments = false,
+  isLoadingDesignations = false,
+  isLoadingManagers = false,
+  isSubmitting = false,
+  autoEmployeeCode = false,
+  isGeneratingCode = false,
+  onChange,
+  onAutoGenerateCode,
+  onEmployeeCodeManualChange,
   onCancel,
-  submitLabel = 'Save',
+  onSubmit,
+  submitLabel,
 }: UserFormProps) => {
-  const [form, setForm] = useState<UserFormData>(defaultValues);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const { errors, clearFieldError, clearErrors, validateFields } = useFormValidation<UserFormData>();
+  const isCreate = mode === 'create';
+  const set = <K extends keyof UserFormValues>(key: K, val: UserFormValues[K]) =>
+    onChange({ ...value, [key]: val });
 
-  const isEdit = Boolean(value);
-
-  const validationSchema = useMemo<ValidationSchema<UserFormData>>(() => ({
-    name: [rules.required('Name is required'), rules.minLength(2)],
-    email: [rules.required('Email is required'), rules.email()],
-    roleId: [rules.required('Role is required')],
-    password: isEdit
-      ? [rules.optionalMinLength(6, 'Password must be at least 6 characters')]
-      : [rules.required('Password is required'), rules.minLength(6, 'Password must be at least 6 characters')],
-    confirmPassword: [
-      (val, all) => {
-        if (!isEdit && !all.password) return 'Confirm password is required';
-        if (all.password && val !== all.password) return 'Passwords do not match';
-        return undefined;
-      },
-    ],
-  }), [isEdit]);
-
-  useEffect(() => {
-    setForm(value ?? defaultValues);
-  }, [value]);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validateFields(form, validationSchema)) {
-      toast.warning('Please fix the highlighted fields.');
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      await onSubmit(form);
-      clearErrors();
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to save user'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const managerOptions = managers.filter(
+    (manager) => manager.status === 'active' && manager.id !== excludeManagerId
+  );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <FormField label="Name" error={errors.name} required>
-        <Input
-          value={form.name}
-          onChange={(e) => {
-            setForm((p) => ({ ...p, name: e.target.value }));
-            clearFieldError('name');
-          }}
-          placeholder="Full name"
-          disabled={isSubmitting}
-          error={Boolean(errors.name)}
-        />
-      </FormField>
-
-      <FormField label="Phone number" error={errors.phone}>
-        <Input
-          value={form.phone}
-          onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-          placeholder="Contact number"
-          disabled={isSubmitting}
-        />
-      </FormField>
-
-      <FormField label="Email" error={errors.email} required>
-        <Input
-          type="email"
-          value={form.email}
-          onChange={(e) => {
-            setForm((p) => ({ ...p, email: e.target.value }));
-            clearFieldError('email');
-          }}
-          placeholder="user@company.com"
-          disabled={isSubmitting}
-          error={Boolean(errors.email)}
-        />
-      </FormField>
-
-      <FormField label="Role" error={errors.roleId} required>
-        <Select
-          value={form.roleId}
-          onChange={(e) => {
-            setForm((p) => ({ ...p, roleId: e.target.value }));
-            clearFieldError('roleId');
-          }}
-          disabled={isSubmitting}
-          error={Boolean(errors.roleId)}
-        >
-          <option value="">Select role</option>
-          {roles.map((role) => (
-            <option key={role.id} value={role.id}>
-              {role.name}
-              {role.code === 'super_admin' ? ' (max 2 users)' : ''}
-            </option>
-          ))}
-        </Select>
-        <p className="mt-1.5 text-xs text-muted">
-          Super Admin role can only be assigned by an existing Super Admin (maximum 2 per company).
-        </p>
-      </FormField>
-
-      <FormField label={isEdit ? 'New password' : 'Password'} error={errors.password} required={!isEdit}>
-        <div className="relative">
-          <Input
-            type={showPassword ? 'text' : 'password'}
-            value={form.password}
-            onChange={(e) => {
-              setForm((p) => ({ ...p, password: e.target.value }));
-              clearFieldError('password');
-            }}
-            placeholder={isEdit ? 'Leave blank to keep current' : 'Minimum 6 characters'}
-            disabled={isSubmitting}
-            error={Boolean(errors.password)}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-            tabIndex={-1}
+    <form onSubmit={onSubmit} className="flex w-full flex-col gap-6">
+      <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <SectionCard
+            icon={<UserRound className="h-4 w-4" />}
+            title="Personal information"
+            description="Basic contact and identity details for the employee."
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-      </FormField>
+            <div className={fieldGrid}>
+              {mode === 'edit' ? (
+                <FormField label="Employee code" className={fullWidthField}>
+                  <Input value={value.employeeCode} disabled readOnly className="bg-surface-2 font-mono" />
+                  <p className="mt-1.5 text-xs text-muted">Employee code cannot be edited after creation.</p>
+                </FormField>
+              ) : null}
 
-      <FormField label="Confirm password" error={errors.confirmPassword} required={!isEdit}>
-        <div className="relative">
-          <Input
-            type={showConfirm ? 'text' : 'password'}
-            value={form.confirmPassword}
-            onChange={(e) => {
-              setForm((p) => ({ ...p, confirmPassword: e.target.value }));
-              clearFieldError('confirmPassword');
-            }}
-            placeholder="Re-enter password"
-            disabled={isSubmitting}
-            error={Boolean(errors.confirmPassword)}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirm((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-            tabIndex={-1}
+              <FormField label="First name" required>
+                <Input
+                  value={value.firstName}
+                  onChange={(e) => set('firstName', e.target.value)}
+                  placeholder="First name"
+                  disabled={isSubmitting}
+                />
+              </FormField>
+
+              <FormField label="Last name" required>
+                <Input
+                  value={value.lastName}
+                  onChange={(e) => set('lastName', e.target.value)}
+                  placeholder="Last name"
+                  disabled={isSubmitting}
+                />
+              </FormField>
+
+              <FormField label="Email" required>
+                <Input
+                  type="email"
+                  value={value.email}
+                  onChange={(e) => set('email', e.target.value)}
+                  placeholder="user@company.com"
+                  disabled={isSubmitting}
+                />
+              </FormField>
+
+              <FormField label="Mobile">
+                <Input
+                  value={value.phone}
+                  onChange={(e) => set('phone', e.target.value)}
+                  placeholder="Mobile number"
+                  disabled={isSubmitting}
+                />
+              </FormField>
+
+              <FormField label="Gender">
+                <Select
+                  value={value.gender}
+                  onChange={(e) => set('gender', e.target.value as UserGender | '')}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </Select>
+              </FormField>
+
+              <FormField label="Date of birth">
+                <Input
+                  type="date"
+                  value={value.dateOfBirth}
+                  onChange={(e) => set('dateOfBirth', e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </FormField>
+
+              <FormField label="Address" className={fullWidthField}>
+                <Input
+                  value={value.address}
+                  onChange={(e) => set('address', e.target.value)}
+                  placeholder="Street, city, state, postal code"
+                  disabled={isSubmitting}
+                />
+              </FormField>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            icon={<Briefcase className="h-4 w-4" />}
+            title="Employment details"
+            description="Role, department, and joining information."
           >
-            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
+            <div className={fieldGrid}>
+              {isCreate ? (
+                <FormField label="Employee code" required className="xl:col-span-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={value.employeeCode}
+                      onChange={(e) => {
+                        onEmployeeCodeManualChange?.();
+                        set('employeeCode', e.target.value.toUpperCase());
+                      }}
+                      placeholder="EMP-COMP-0001"
+                      disabled={isSubmitting || autoEmployeeCode}
+                      className="flex-1 font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={onAutoGenerateCode}
+                      disabled={isSubmitting || isGeneratingCode}
+                      className="shrink-0"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isGeneratingCode ? 'animate-spin' : ''}`} />
+                      <span className="ml-2">Auto Generate</span>
+                    </Button>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted">
+                    Enter manually or auto-generate. Cannot be changed after the user is created.
+                  </p>
+                </FormField>
+              ) : null}
+
+              <FormField label="Role" required className={isCreate ? '' : 'xl:col-span-2'}>
+                <Select
+                  value={value.roleId}
+                  onChange={(e) => set('roleId', e.target.value)}
+                  disabled={isSubmitting || isLoadingRoles}
+                >
+                  <option value="">Select role</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                      {role.code === 'super_admin' ? ' (max 2 users)' : ''}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField label="Department">
+                <Select
+                  value={value.departmentId}
+                  onChange={(e) => set('departmentId', e.target.value)}
+                  disabled={isSubmitting || isLoadingDepartments}
+                >
+                  <option value="">Select department</option>
+                  {departments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField label="Designation">
+                <Select
+                  value={value.designationId}
+                  onChange={(e) => set('designationId', e.target.value)}
+                  disabled={isSubmitting || isLoadingDesignations}
+                >
+                  <option value="">Select designation</option>
+                  {designations.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField label="Employee type">
+                <Select
+                  value={value.employeeType}
+                  onChange={(e) => set('employeeType', e.target.value as EmployeeType | '')}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select employee type</option>
+                  {EMPLOYEE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {EMPLOYEE_TYPE_LABELS[type]}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField label="Reporting manager">
+                <Select
+                  value={value.reportingManagerId}
+                  onChange={(e) => set('reportingManagerId', e.target.value)}
+                  disabled={isSubmitting || isLoadingManagers}
+                >
+                  <option value="">No reporting manager</option>
+                  {managerOptions.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name} ({manager.employeeCode})
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              {shifts.length > 0 ? (
+                <FormField label="Default shift">
+                  <Select
+                    value={value.defaultShiftId}
+                    onChange={(e) => set('defaultShiftId', e.target.value)}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">No default shift</option>
+                    {shifts.map((shift) => (
+                      <option key={shift.id} value={shift.id}>
+                        {shift.name} ({shift.startTime}–{shift.endTime})
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="mt-1.5 text-xs text-muted">
+                    Optional starting shift in shift mode. Employees can change it anytime on the
+                    Attendance page.
+                  </p>
+                </FormField>
+              ) : null}
+
+              <FormField label="Joining date">
+                <Input
+                  type="date"
+                  value={value.joiningDate}
+                  onChange={(e) => set('joiningDate', e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </FormField>
+            </div>
+          </SectionCard>
         </div>
-      </FormField>
 
-      <StatusToggle
-        checked={form.status === 'active'}
-        onChange={(checked) => setForm((p) => ({ ...p, status: checked ? 'active' : 'inactive' }))}
-        disabled={isSubmitting}
-      />
+        <aside className="flex flex-col gap-6">
+          <SectionCard
+            icon={<KeyRound className="h-4 w-4" />}
+            title="Account"
+            description={isCreate ? 'Login credentials and access status.' : 'Portal access status.'}
+          >
+            <div className="space-y-5">
+              {isCreate ? (
+                <div className="rounded-sm border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-body">
+                  <p className="font-medium text-primary">Auto-generated password</p>
+                  <p className="mt-1 text-muted">
+                    A secure password will be created automatically and emailed to the user&apos;s email address
+                    when you save.
+                  </p>
+                </div>
+              ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <StatusToggle
+                checked={value.status === 'active'}
+                onChange={(checked) => set('status', checked ? 'active' : 'inactive')}
+                disabled={isSubmitting}
+              />
+            </div>
+          </SectionCard>
+        </aside>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3 border-t border-base pt-6 sm:flex-row sm:items-center sm:justify-end">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : submitLabel}
+          {isSubmitting ? 'Saving...' : submitLabel ?? (isCreate ? 'Create user' : 'Update user')}
         </Button>
       </div>
     </form>

@@ -1,17 +1,37 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
-import { Input } from '../../../components/ui/Input';
-import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
-import { FormField } from '../../../components/ui/FormField';
-import { StatusToggle } from '../../../components/common/StatusToggle';
+import { UserForm, type UserFormValues } from './UserForm';
 import { portalUserService } from '../../../services/user.service';
 import { roleService } from '../../../services/role.service';
-import type { PortalRole, UserGender } from '../../../shared/types/portal.types';
+import { departmentService, designationService } from '../../../services/master.service';
+import type { PortalRole, PortalUserRecord, PortalMasterRecord } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import { shiftService } from '../../../services/shift.service';
+import type { PortalShiftRecord } from '../../../shared/types/shift.types';
+import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
+
+const emptyForm: UserFormValues = {
+  employeeCode: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  roleId: '',
+  departmentId: '',
+  designationId: '',
+  employeeType: '',
+  reportingManagerId: '',
+  defaultShiftId: '',
+  joiningDate: '',
+  gender: '',
+  dateOfBirth: '',
+  address: '',
+  status: 'active',
+};
 
 export const UserCreatePage = () => {
   const navigate = useNavigate();
@@ -19,26 +39,18 @@ export const UserCreatePage = () => {
   const listPath = `/${moduleCode}/${itemCode}`;
 
   const [roles, setRoles] = useState<PortalRole[]>([]);
+  const [departments, setDepartments] = useState<PortalMasterRecord[]>([]);
+  const [designations, setDesignations] = useState<PortalMasterRecord[]>([]);
+  const [managers, setManagers] = useState<PortalUserRecord[]>([]);
+  const [shifts, setShifts] = useState<PortalShiftRecord[]>([]);
+  const [form, setForm] = useState<UserFormValues>(emptyForm);
   const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
+  const [isLoadingDesignations, setIsLoadingDesignations] = useState(true);
+  const [isLoadingManagers, setIsLoadingManagers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [autoEmployeeCode, setAutoEmployeeCode] = useState(false);
-
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    roleId: '',
-    department: '',
-    designation: '',
-    joiningDate: '',
-    gender: '' as '' | UserGender,
-    dateOfBirth: '',
-    address: '',
-    employeeCode: '',
-    status: 'active' as 'active' | 'inactive',
-  });
 
   useEffect(() => {
     roleService
@@ -46,6 +58,29 @@ export const UserCreatePage = () => {
       .then(setRoles)
       .catch((err) => toast.error(getApiErrorMessage(err, 'Failed to load roles')))
       .finally(() => setIsLoadingRoles(false));
+
+    departmentService
+      .getActive()
+      .then(setDepartments)
+      .catch((err) => toast.error(getApiErrorMessage(err, 'Failed to load departments')))
+      .finally(() => setIsLoadingDepartments(false));
+
+    designationService
+      .getActive()
+      .then(setDesignations)
+      .catch((err) => toast.error(getApiErrorMessage(err, 'Failed to load designations')))
+      .finally(() => setIsLoadingDesignations(false));
+
+    portalUserService
+      .getUsers()
+      .then(setManagers)
+      .catch((err) => toast.error(getApiErrorMessage(err, 'Failed to load managers')))
+      .finally(() => setIsLoadingManagers(false));
+
+    shiftService
+      .getActive()
+      .then(setShifts)
+      .catch(() => setShifts([]));
   }, []);
 
   const handleAutoGenerateCode = async () => {
@@ -82,8 +117,11 @@ export const UserCreatePage = () => {
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
         roleId: form.roleId,
-        department: form.department.trim() || undefined,
-        designation: form.designation.trim() || undefined,
+        departmentId: form.departmentId || undefined,
+        designationId: form.designationId || undefined,
+        employeeType: form.employeeType || undefined,
+        reportingManagerId: form.reportingManagerId || undefined,
+        defaultShiftId: form.defaultShiftId || undefined,
         joiningDate: form.joiningDate || undefined,
         gender: form.gender || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
@@ -102,171 +140,38 @@ export const UserCreatePage = () => {
   };
 
   return (
+    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="create" fallbackTo={listPath}>
     <UserLayout title="Add User" subtitle="Create a new employee portal account">
-      <div className="mb-4">
+      <div className="mb-5">
         <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>
-          <ArrowLeft className="mr-2 h-4 w-4 inline" />
+          <ArrowLeft className="mr-2 inline h-4 w-4" />
           Back to users
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
-        <section className="rounded-sm border border-base bg-surface p-6 shadow-soft space-y-4">
-          <h2 className="text-lg font-semibold text-body">Personal information</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="First name" required>
-              <Input
-                value={form.firstName}
-                onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
-                placeholder="First name"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Last name" required>
-              <Input
-                value={form.lastName}
-                onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
-                placeholder="Last name"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Email" required>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                placeholder="user@company.com"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Mobile">
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="Mobile number"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Gender">
-              <Select
-                value={form.gender}
-                onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value as UserGender | '' }))}
-                disabled={isSubmitting}
-              >
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </Select>
-            </FormField>
-            <FormField label="Date of birth">
-              <Input
-                type="date"
-                value={form.dateOfBirth}
-                onChange={(e) => setForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-          </div>
-          <FormField label="Address">
-            <Input
-              value={form.address}
-              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-              placeholder="Full address"
-              disabled={isSubmitting}
-            />
-          </FormField>
-        </section>
-
-        <section className="rounded-sm border border-base bg-surface p-6 shadow-soft space-y-4">
-          <h2 className="text-lg font-semibold text-body">Employment details</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Employee code" required>
-              <div className="flex gap-2">
-                <Input
-                  value={form.employeeCode}
-                  onChange={(e) => {
-                    setAutoEmployeeCode(false);
-                    setForm((p) => ({ ...p, employeeCode: e.target.value.toUpperCase() }));
-                  }}
-                  placeholder="EMP-COMP-0001"
-                  disabled={isSubmitting || autoEmployeeCode}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleAutoGenerateCode}
-                  disabled={isSubmitting || isGeneratingCode}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isGeneratingCode ? 'animate-spin' : ''}`} />
-                  <span className="ml-2 hidden sm:inline">Auto Generate</span>
-                </Button>
-              </div>
-              <p className="mt-1.5 text-xs text-muted">Employee code cannot be changed after the user is created.</p>
-            </FormField>
-            <FormField label="Role" required>
-              <Select
-                value={form.roleId}
-                onChange={(e) => setForm((p) => ({ ...p, roleId: e.target.value }))}
-                disabled={isSubmitting || isLoadingRoles}
-              >
-                <option value="">Select role</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Department">
-              <Input
-                value={form.department}
-                onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
-                placeholder="Department"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Designation">
-              <Input
-                value={form.designation}
-                onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))}
-                placeholder="Designation"
-                disabled={isSubmitting}
-              />
-            </FormField>
-            <FormField label="Joining date">
-              <Input
-                type="date"
-                value={form.joiningDate}
-                onChange={(e) => setForm((p) => ({ ...p, joiningDate: e.target.value }))}
-                disabled={isSubmitting}
-              />
-            </FormField>
-          </div>
-        </section>
-
-        <section className="rounded-sm border border-base bg-surface p-6 shadow-soft space-y-4">
-          <h2 className="text-lg font-semibold text-body">Account</h2>
-          <div className="rounded-sm bg-primary-soft border border-primary-soft p-4 text-sm text-primary">
-            A secure password will be generated automatically and sent to the user&apos;s email address.
-          </div>
-          <StatusToggle
-            checked={form.status === 'active'}
-            onChange={(checked) => setForm((p) => ({ ...p, status: checked ? 'active' : 'inactive' }))}
-            disabled={isSubmitting}
-          />
-        </section>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate(listPath)} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create user'}
-          </Button>
-        </div>
-      </form>
+      <UserForm
+        mode="create"
+        value={form}
+        roles={roles}
+        departments={departments}
+        designations={designations}
+        managers={managers}
+        shifts={shifts}
+        isLoadingRoles={isLoadingRoles}
+        isLoadingDepartments={isLoadingDepartments}
+        isLoadingDesignations={isLoadingDesignations}
+        isLoadingManagers={isLoadingManagers}
+        isSubmitting={isSubmitting}
+        autoEmployeeCode={autoEmployeeCode}
+        isGeneratingCode={isGeneratingCode}
+        onChange={setForm}
+        onAutoGenerateCode={handleAutoGenerateCode}
+        onEmployeeCodeManualChange={() => setAutoEmployeeCode(false)}
+        onCancel={() => navigate(listPath)}
+        onSubmit={handleSubmit}
+        submitLabel="Create user"
+      />
     </UserLayout>
+    </ModulePermissionGuard>
   );
 };

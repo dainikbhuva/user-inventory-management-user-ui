@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Pencil, Trash2 } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
 import { Pagination } from '../../../components/common/Pagination';
@@ -16,6 +17,8 @@ import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
+import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 
 type RoleSortField = 'name' | 'code' | 'type' | 'status' | 'createdAt';
 
@@ -41,6 +44,14 @@ const getRoleSortValue = (role: PortalRole, sortKey: string): string | number =>
 };
 
 export const RolesPage = () => {
+  const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
+  const permMod = moduleCode ?? PORTAL_PERMISSION_MODULES.roles.moduleCode;
+  const permItem = itemCode ?? PORTAL_PERMISSION_MODULES.roles.itemCode;
+  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+    permMod,
+    permItem
+  );
+
   const [roles, setRoles] = useState<PortalRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -179,6 +190,7 @@ export const RolesPage = () => {
           }
           return (
             <div className="inline-flex items-center justify-center gap-2">
+              {canEdit ? (
               <button
                 type="button"
                 title="Edit role"
@@ -187,6 +199,8 @@ export const RolesPage = () => {
               >
                 <Pencil className="h-4 w-4" />
               </button>
+              ) : null}
+              {canDelete ? (
               <button
                 type="button"
                 title="Delete role"
@@ -195,15 +209,27 @@ export const RolesPage = () => {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              ) : null}
+              {!canEdit && !canDelete ? <span className="text-xs text-muted">—</span> : null}
             </div>
           );
         },
       },
     ],
-    [table.rowIndexOffset]
+    [table.rowIndexOffset, canEdit, canDelete]
   );
 
   const isFormOpen = isAddOpen || Boolean(editing);
+
+  if (!permsLoading && !canView) {
+    return (
+      <UserLayout title="Roles" subtitle="Access restricted">
+        <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
+          You do not have permission to view roles.
+        </div>
+      </UserLayout>
+    );
+  }
 
   return (
     <UserLayout title="Roles" subtitle="Manage company roles">
@@ -211,10 +237,14 @@ export const RolesPage = () => {
         title="Roles"
         subtitle="All roles belong to your company. Super Admin is auto-created; add more roles with any code you need."
         addLabel="Add Role"
-        onAdd={() => {
-          setEditing(null);
-          setIsAddOpen(true);
-        }}
+        onAdd={
+          canCreate
+            ? () => {
+                setEditing(null);
+                setIsAddOpen(true);
+              }
+            : undefined
+        }
         filterOpen={table.filterOpen}
         onFilterToggle={() => table.setFilterOpen((open) => !open)}
         activeFilterCount={table.activeFilterCount}
