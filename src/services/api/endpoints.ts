@@ -98,6 +98,11 @@ export const API_ENDPOINTS = {
     RENEW: '/app/subscription/renew',
     AUTO_RENEW: '/app/subscription/auto-renew',
   },
+  PAYMENTS: {
+    CHECKOUT: '/app/payments/checkout',
+    VERIFY: '/app/payments/verify',
+    HISTORY: '/app/payments/history',
+  },
 } as const;
 
 export const QUERY_KEYS = {

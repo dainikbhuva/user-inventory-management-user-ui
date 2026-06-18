@@ -3,11 +3,14 @@ import { CreditCard, RefreshCw, TrendingUp, Users, Calendar, AlertCircle } from 
 import { Button } from '../../../components/ui/Button';
 import { useSubscription } from '../../../shared/subscription/SubscriptionContext';
 import { usePermissions } from '../../../shared/permissions/PermissionContext';
+import { useAuth } from '../../../shared/auth/useAuth';
 import {
   subscriptionService,
   type PortalPlanSummary,
   type PortalSubscriptionQuote,
 } from '../../../services/subscription.service';
+import { paymentService } from '../../../services/payment.service';
+import { loadRazorpayScript, openRazorpayCheckout } from '../../../shared/utils/razorpay';
 import {
   computeBillingPeriodTotal,
   getBillingPeriodConfig,
@@ -31,6 +34,7 @@ const formatMoney = (amount: number) => (amount === 0 ? 'Free' : `₹${amount.to
 export const SettingsBillingPage = () => {
   const { subscription, refresh, isLoading } = useSubscription();
   const { isSuperAdmin } = usePermissions();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<PortalPlanSummary[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [seatCount, setSeatCount] = useState(String(PLAN_MIN_USERS));
@@ -44,7 +48,8 @@ export const SettingsBillingPage = () => {
   const seats = Number(seatCount) || PLAN_MIN_USERS;
   const minSeats = Math.max(
     selectedPlan?.minUsers ?? PLAN_MIN_USERS,
-    subscription?.activeUserCount ?? PLAN_MIN_USERS
+    subscription?.activeUserCount ?? PLAN_MIN_USERS,
+    subscription?.seatCount ?? PLAN_MIN_USERS
   );
 
   const canUpgrade = subscription && !subscription.isExpired && subscription.status === 'active';
@@ -111,21 +116,59 @@ export const SettingsBillingPage = () => {
     return computeBillingPeriodTotal(selectedPlan.finalPrice, seats, months);
   }, [selectedPlan, seats]);
 
-  const handleApply = async () => {
-    if (!selectedPlanId || !isSuperAdmin) return;
+  const handlePay = async () => {
+    if (!selectedPlanId || !isSuperAdmin || !quote) return;
+    const action = mode === 'renew' || canRenew ? 'renew' : 'upgrade';
+
     try {
       setActionLoading(true);
-      if (mode === 'renew' || canRenew) {
-        await subscriptionService.renew({ planId: selectedPlanId, seatCount: seats, autoRenew });
-        toast.success('Plan renewed successfully');
-      } else {
-        await subscriptionService.upgrade({ planId: selectedPlanId, seatCount: seats });
-        toast.success('Plan updated successfully');
+      const checkoutRes = await paymentService.checkout({
+        action,
+        planId: selectedPlanId,
+        seatCount: seats,
+        ...(action === 'renew' ? { autoRenew } : {}),
+      });
+      const checkout = checkoutRes.data;
+      if (!checkout) {
+        throw new Error('Failed to start checkout');
       }
+
+      if (checkout.amount <= 0 || !checkout.orderId) {
+        toast.success(action === 'renew' ? 'Plan renewed successfully' : 'Plan updated successfully');
+        await refresh();
+        setQuote(null);
+        return;
+      }
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        throw new Error('Could not load Razorpay. Check your internet connection.');
+      }
+
+      const payment = await openRazorpayCheckout({
+        keyId: checkout.keyId,
+        orderId: checkout.orderId,
+        amount: checkout.amount,
+        currency: checkout.currency,
+        description: `${checkout.quote.planName} · ${seats} users`,
+        prefill: { name: user?.name, email: user?.email },
+      });
+
+      await paymentService.verify({
+        transactionId: checkout.transactionId,
+        razorpay_order_id: payment.razorpay_order_id,
+        razorpay_payment_id: payment.razorpay_payment_id,
+        razorpay_signature: payment.razorpay_signature,
+      });
+
+      toast.success(action === 'renew' ? 'Plan renewed successfully' : 'Plan updated successfully');
       await refresh();
       setQuote(null);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to update subscription'));
+      const message = getApiErrorMessage(err, 'Payment failed');
+      if (message !== 'Payment cancelled') {
+        toast.error(message);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -273,9 +316,11 @@ export const SettingsBillingPage = () => {
               </button>
             </div>
             <p className="mt-3 text-sm text-muted">
-              {mode === 'renew' || canRenew
-                ? 'Start a new billing period after expiry. Full plan price applies for the selected term.'
-                : 'Change plan or add users mid-term. You only pay the prorated difference for the remaining days.'}
+              {subscription.isTrial
+                ? `Free trial: ${subscription.activeUserCount} of ${subscription.seatCount} seats used. Pay to add more users or continue with a paid plan.`
+                : mode === 'renew' || canRenew
+                  ? 'Start a new billing period after expiry. Full plan price applies for the selected term.'
+                  : 'Change plan or add users mid-term. You only pay the prorated difference for the remaining days.'}
             </p>
           </div>
 
@@ -375,15 +420,17 @@ export const SettingsBillingPage = () => {
 
             <Button
               type="button"
-              onClick={() => void handleApply()}
+              onClick={() => void handlePay()}
               disabled={actionLoading || quoteLoading || !quote || seats < minSeats}
               className="w-full sm:w-auto"
             >
               {actionLoading
                 ? 'Processing...'
-                : mode === 'renew' || canRenew
-                  ? 'Renew plan'
-                  : 'Apply upgrade'}
+                : quote && quote.amountDue <= 0
+                  ? mode === 'renew' || canRenew
+                    ? 'Renew plan'
+                    : 'Apply upgrade'
+                  : `Pay ${quote ? formatMoney(quote.amountDue) : ''}`}
             </Button>
           </div>
         </div>
