@@ -2,6 +2,7 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse,
 import { useAuthStore } from '@/store/auth.store'
 import { toast } from '@/shared/utils/toast'
 import { API_BASE_URL, API_TIMEOUT } from '@/config/env'
+import { isPublicAuthRequest } from '@/utils/authRequest'
 
 // Create axios instance
 const axiosClient: AxiosInstance = axios.create({
@@ -39,9 +40,10 @@ axiosClient.interceptors.response.use(
     }
 
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
-    
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const requestUrl = originalRequest.url || ''
+    const isAuthLogin = isPublicAuthRequest(requestUrl)
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthLogin) {
       originalRequest._retry = true
       
       // Clear auth state and redirect to login

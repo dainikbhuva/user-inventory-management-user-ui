@@ -59,8 +59,15 @@ class ApiService {
     const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({})) as {
+        message?: string;
+        error?: { message?: string };
+      };
+      const message =
+        errorData.message ||
+        errorData.error?.message ||
+        `HTTP error! status: ${response.status}`;
+      throw new Error(message);
     }
 
     return response.json();
