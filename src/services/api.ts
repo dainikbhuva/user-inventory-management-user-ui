@@ -1,7 +1,6 @@
 import type { User } from '../shared/auth/types';
 import type { MenuData } from '../shared/types/menu.types';
-
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+import { API_BASE_URL } from '../config/env';
 
 export interface ApiUser extends User {
   status?: string;

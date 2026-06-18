@@ -1,15 +1,12 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios'
 import { useAuthStore } from '@/store/auth.store'
 import { toast } from '@/shared/utils/toast'
-
-// API Configuration
-const API_BASE_URL = 'http://localhost:3000/api/v1'
-const REQUEST_TIMEOUT = 10000
+import { API_BASE_URL, API_TIMEOUT } from '@/config/env'
 
 // Create axios instance
 const axiosClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: REQUEST_TIMEOUT,
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
