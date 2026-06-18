@@ -55,7 +55,7 @@ export const UserLayout = ({ children, title = 'Dashboard', subtitle }: UserLayo
         <UserHeader title={title} subtitle={subtitle} onSidebarToggle={handleToggle} />
         <main
           style={{ backgroundColor: 'var(--color-background)' }}
-          className="theme-scrollbar flex-1 overflow-y-auto p-4 sm:p-6"
+          className="theme-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
         >
           {children}
         </main>

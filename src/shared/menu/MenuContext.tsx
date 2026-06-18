@@ -15,7 +15,7 @@ export interface MenuContextValue {
   meta: MenuMeta;
   isLoading: boolean;
   error: string;
-  reload: () => Promise<void>;
+  reload: (force?: boolean) => Promise<void>;
 }
 
 const MenuContext = createContext<MenuContextValue | undefined>(undefined);
@@ -27,7 +27,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const loadMenu = useCallback(async () => {
+  const loadMenu = useCallback(async (force = false) => {
     if (!isAuthenticated) {
       menuService.clearCache();
       setGroups([]);
@@ -39,7 +39,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       setError('');
-      const menu = await menuService.getMenu();
+      const menu = await menuService.getMenu({ force });
       setGroups(sortMenuGroups(menu.groups));
       setMeta(menu.meta);
     } catch (err) {
@@ -57,8 +57,10 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const handleFocus = () => {
-      menuService.clearCache();
-      void loadMenu();
+      // Refresh only when cache is stale — avoid hammering /app/menu on every tab click
+      if (menuService.isStale(2 * 60 * 1000)) {
+        void loadMenu();
+      }
     };
 
     window.addEventListener('focus', handleFocus);

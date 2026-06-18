@@ -15,30 +15,31 @@ export const PermissionToggle = ({
   ariaLabel,
   className,
 }: PermissionToggleProps) => (
-  <label
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={ariaLabel}
+    disabled={disabled}
+    onClick={(event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!disabled) onChange(!checked);
+    }}
     className={cn(
-      'inline-flex h-6 w-10 shrink-0 cursor-pointer items-center justify-center',
-      disabled && 'cursor-not-allowed opacity-40',
+      'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
+      checked ? 'border-primary bg-primary' : 'border-base bg-surface-3',
+      disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
       className
     )}
   >
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(event) => onChange(event.target.checked)}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className="peer sr-only"
-    />
     <span
+      aria-hidden
       className={cn(
-        'relative block h-5 w-9 rounded-full border border-base bg-surface-3 transition-colors',
-        'peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-1',
-        'peer-checked:border-primary peer-checked:bg-primary',
-        'after:absolute after:left-0.5 after:top-0.5 after:block after:h-3.5 after:w-3.5 after:rounded-full',
-        'after:bg-white after:shadow-sm after:transition-transform after:content-[""]',
-        'peer-checked:after:translate-x-4'
+        'pointer-events-none absolute left-0.5 top-0.5 block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform',
+        checked && 'translate-x-4'
       )}
     />
-  </label>
+  </button>
 );

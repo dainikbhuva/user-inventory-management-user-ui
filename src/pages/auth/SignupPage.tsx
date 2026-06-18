@@ -12,8 +12,12 @@ import {
   Phone,
   MapPin,
   Shield,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 import { useAuth } from '../../shared/auth/useAuth';
+
+type SignupStep = 'company' | 'user';
 
 const slugifyCompanyCode = (value: string) =>
   value
@@ -40,7 +44,12 @@ const strengthMeta = [
   { label: 'Strong', color: 'bg-green-500', text: 'text-green-600' },
 ];
 
-const LeftPanel = () => (
+const STEPS: { id: SignupStep; label: string; icon: typeof Building2 }[] = [
+  { id: 'company', label: 'Company details', icon: Building2 },
+  { id: 'user', label: 'User details', icon: Shield },
+];
+
+const LeftPanel = ({ activeStep }: { activeStep: SignupStep }) => (
   <aside className="relative hidden flex-col justify-between overflow-hidden bg-surface-3 p-12 lg:flex">
     <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-primary-soft blur-3xl" />
     <div className="pointer-events-none absolute bottom-0 left-0 h-56 w-56 rounded-full bg-primary-soft blur-3xl" />
@@ -85,34 +94,39 @@ const LeftPanel = () => (
       </div>
     </div>
 
-    <div className="relative z-10 flex gap-8 border-t border-base pt-8">
-      {[
-        ['1', 'Company'],
-        ['2', 'Super Admin'],
-        ['3', 'Dashboard'],
-      ].map(([val, label]) => (
-        <div key={label}>
-          <p className="text-xl font-bold text-body">{val}</p>
-          <p className="mt-0.5 text-xs text-muted">{label}</p>
-        </div>
-      ))}
+    <div className="relative z-10 flex gap-6 border-t border-base pt-8">
+      {STEPS.map((step, index) => {
+        const isActive = step.id === activeStep;
+        const isDone = activeStep === 'user' && step.id === 'company';
+        return (
+          <div key={step.id} className="flex items-center gap-3">
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : isDone
+                    ? 'bg-primary/15 text-primary'
+                    : 'border border-base bg-surface-2 text-muted'
+              }`}
+            >
+              {isDone ? <Check className="h-4 w-4" /> : index + 1}
+            </div>
+            <div>
+              <p className={`text-sm font-medium ${isActive ? 'text-body' : 'text-muted'}`}>
+                {step.label}
+              </p>
+              <p className="text-xs text-muted">Step {index + 1}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   </aside>
 );
 
-const SectionTitle = ({ icon: Icon, title, description }: { icon: typeof Building2; title: string; description: string }) => (
-  <div className="mb-4 border-b border-base pb-4">
-    <div className="mb-2 flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-primary/20 bg-primary-soft">
-        <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <h3 className="text-base font-semibold text-body">{title}</h3>
-    </div>
-    <p className="text-xs text-muted">{description}</p>
-  </div>
-);
-
 export const SignupPage = () => {
+  const [activeStep, setActiveStep] = useState<SignupStep>('company');
+
   const [companyName, setCompanyName] = useState('');
   const [companyCode, setCompanyCode] = useState('');
   const [companyCodeTouched, setCompanyCodeTouched] = useState(false);
@@ -143,10 +157,53 @@ export const SignupPage = () => {
     }
   };
 
+  const validateCompanyStep = (): string | null => {
+    if (!companyName.trim()) return 'Company name is required.';
+    if (!companyCode.trim()) return 'Company code is required.';
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(companyCode.trim())) {
+      return 'Company code must use lowercase letters, numbers, and hyphens only.';
+    }
+    if (!companyEmail.trim()) return 'Company email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyEmail.trim())) {
+      return 'Enter a valid company email.';
+    }
+    return null;
+  };
+
+  const handleNextStep = () => {
+    setError('');
+    const validationError = validateCompanyStep();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setActiveStep('user');
+  };
+
+  const handlePrevStep = () => {
+    setError('');
+    setActiveStep('company');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    const companyError = validateCompanyStep();
+    if (companyError) {
+      setError(companyError);
+      setActiveStep('company');
+      return;
+    }
+
+    if (!adminName.trim()) {
+      setError('Full name is required.');
+      return;
+    }
+    if (!adminEmail.trim()) {
+      setError('Login email is required.');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -190,7 +247,7 @@ export const SignupPage = () => {
 
   return (
     <div className="theme-scrollbar grid min-h-screen max-h-screen grid-cols-1 overflow-y-auto lg:grid-cols-[1.1fr_1fr]">
-      <LeftPanel />
+      <LeftPanel activeStep={activeStep} />
 
       <main className="flex min-h-screen items-start justify-center bg-surface p-6 sm:p-10 lg:items-center">
         <div className="w-full max-w-lg py-4">
@@ -202,9 +259,54 @@ export const SignupPage = () => {
           </div>
 
           <h2 className="mb-1 text-2xl font-bold text-body">Create your company account</h2>
-          <p className="mb-7 text-sm text-muted">
-            Add your company details and set up the Super Admin who will sign in to the portal.
+          <p className="mb-6 text-sm text-muted">
+            Complete both steps to register your company and Super Admin login.
           </p>
+
+          {/* Tab stepper */}
+          <div
+            className="mb-6 grid grid-cols-2 gap-1 rounded-sm border border-base bg-surface-2/50 p-1"
+            role="tablist"
+            aria-label="Signup steps"
+          >
+            {STEPS.map((step) => {
+              const Icon = step.icon;
+              const isActive = activeStep === step.id;
+              const isComplete = activeStep === 'user' && step.id === 'company';
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  disabled={isLoading || (step.id === 'user' && activeStep === 'company' && !!validateCompanyStep())}
+                  onClick={() => {
+                    if (step.id === 'company') {
+                      setError('');
+                      setActiveStep('company');
+                      return;
+                    }
+                    handleNextStep();
+                  }}
+                  className={`flex items-center justify-center gap-2 rounded-sm px-3 py-2.5 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-surface text-body shadow-sm'
+                      : isComplete
+                        ? 'text-primary hover:bg-surface/60'
+                        : 'text-muted hover:bg-surface/40 hover:text-body'
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {isComplete ? (
+                    <Check className="h-4 w-4 shrink-0 text-primary" />
+                  ) : (
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                  )}
+                  <span className="truncate">{step.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
           {error ? (
             <div className="mb-5 flex items-center gap-2.5 rounded-sm border border-red-200 bg-red-50 px-4 py-3">
@@ -213,15 +315,14 @@ export const SignupPage = () => {
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <section className="rounded-sm border border-base bg-surface-2/30 p-5">
-              <SectionTitle
-                icon={Building2}
-                title="Company details"
-                description="Basic information about your organization."
-              />
+          <form onSubmit={handleSubmit} className="rounded-sm border border-base bg-surface-2/30 p-5">
+            {activeStep === 'company' ? (
+              <div role="tabpanel" aria-label="Company details" className="space-y-4">
+                <div className="mb-2 border-b border-base pb-4">
+                  <h3 className="text-base font-semibold text-body">Company details</h3>
+                  <p className="mt-1 text-xs text-muted">Basic information about your organization.</p>
+                </div>
 
-              <div className="space-y-4">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-body">Company name</label>
                   <div className="relative">
@@ -310,17 +411,26 @@ export const SignupPage = () => {
                     />
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  disabled={isLoading}
+                  className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Continue to user details
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-            </section>
+            ) : (
+              <div role="tabpanel" aria-label="User details" className="space-y-4">
+                <div className="mb-2 border-b border-base pb-4">
+                  <h3 className="text-base font-semibold text-body">Super Admin account</h3>
+                  <p className="mt-1 text-xs text-muted">
+                    This user gets full access and will sign in to manage the portal.
+                  </p>
+                </div>
 
-            <section className="rounded-sm border border-base bg-surface-2/30 p-5">
-              <SectionTitle
-                icon={Shield}
-                title="Super Admin account"
-                description="This user gets full access and will sign in to manage the portal."
-              />
-
-              <div className="space-y-4">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-body">Full name</label>
                   <div className="relative">
@@ -426,19 +536,30 @@ export const SignupPage = () => {
                     ) : null}
                   </div>
                 </div>
-              </div>
-            </section>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isLoading ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
-              ) : null}
-              {isLoading ? 'Creating company...' : 'Create company & sign in'}
-            </button>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    disabled={isLoading}
+                    className="flex h-11 items-center justify-center gap-2 rounded-sm border border-base bg-surface text-sm font-semibold text-body transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex h-11 items-center justify-center gap-2 rounded-sm bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isLoading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+                    ) : null}
+                    {isLoading ? 'Creating...' : 'Create account'}
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-muted">
