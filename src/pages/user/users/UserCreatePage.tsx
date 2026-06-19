@@ -111,7 +111,7 @@ export const UserCreatePage = () => {
 
     try {
       setIsSubmitting(true);
-      await portalUserService.createUser({
+      const result = await portalUserService.createUser({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
@@ -130,7 +130,16 @@ export const UserCreatePage = () => {
         autoGenerateEmployeeCode: autoEmployeeCode,
         status: form.status,
       });
-      toast.success('User created. Login password has been sent to their email.');
+      if (result.emailSent) {
+        toast.success('User created. Login password has been sent to their email.');
+      } else {
+        toast.success('User created successfully.');
+        toast.warning(
+          result.emailWarning
+            ? `Welcome email could not be sent: ${result.emailWarning}`
+            : 'Welcome email could not be sent. Share login credentials with the user manually.'
+        );
+      }
       navigate(listPath);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to create user'));

@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from './api/endpoints';
 import type { ApiResponse } from '../shared/types/api.types';
 import type {
   CreatePortalUserPayload,
+  CreatePortalUserResult,
   PortalUserRecord,
   UpdatePortalUserPayload,
 } from '../shared/types/portal.types';
@@ -29,12 +30,16 @@ export const portalUserService = {
     return response.data.data!.employeeCode;
   },
 
-  async createUser(payload: CreatePortalUserPayload): Promise<PortalUserRecord> {
-    const response = await axiosClient.post<ApiResponse<{ user: PortalUserRecord }>>(
-      API_ENDPOINTS.USERS.LIST,
-      payload
-    );
-    return response.data.data!.user;
+  async createUser(payload: CreatePortalUserPayload): Promise<CreatePortalUserResult> {
+    const response = await axiosClient.post<
+      ApiResponse<{ user: PortalUserRecord; emailSent: boolean; emailWarning?: string }>
+    >(API_ENDPOINTS.USERS.LIST, payload);
+    const data = response.data.data!;
+    return {
+      user: data.user,
+      emailSent: data.emailSent ?? false,
+      ...(data.emailWarning ? { emailWarning: data.emailWarning } : {}),
+    };
   },
 
   async updateUser(id: string, payload: UpdatePortalUserPayload): Promise<PortalUserRecord> {

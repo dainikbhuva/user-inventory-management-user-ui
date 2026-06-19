@@ -75,6 +75,12 @@ export interface PermissionOption {
   linkType: 'module-direct' | 'module-dropdown' | 'dropdown-item';
 }
 
+export interface CreatePortalUserResult {
+  user: PortalUserRecord;
+  emailSent: boolean;
+  emailWarning?: string;
+}
+
 export interface CreatePortalUserPayload {
   firstName: string;
   lastName: string;
