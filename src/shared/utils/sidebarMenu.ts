@@ -13,15 +13,6 @@ const filterModule = (item: MenuItem): MenuItem | null => {
     if (children.length === 0) {
       return null;
     }
-    if (children.length === 1) {
-      const only = children[0]!;
-      return {
-        ...item,
-        linkType: 'direct',
-        path: only.path,
-        children: undefined,
-      };
-    }
     return { ...item, children };
   }
 

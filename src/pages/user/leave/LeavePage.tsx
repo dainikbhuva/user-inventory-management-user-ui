@@ -9,16 +9,16 @@ import { LeaveRequestForm, type LeaveRequestFormData } from './LeaveRequestForm'
 import { LeaveActionButtons, LeaveStatusBadge } from './LeaveStatusBadge';
 import { leaveService } from '../../../services/leave.service';
 import { leaveTypeService } from '../../../services/leaveType.service';
-import { portalUserService } from '../../../services/user.service';
+import { authService } from '../../../services/auth.service';
 import { useAuth } from '../../../shared/auth/useAuth';
 import type { PortalLeaveBalanceRecord, PortalLeaveListMeta, PortalLeaveRequestRecord } from '../../../shared/types/leave.types';
 import type { PortalLeaveTypeRecord } from '../../../shared/types/leave.types';
-import type { PortalUserRecord } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 type TabKey = 'my' | 'approvals';
 type LeaveSortField = 'employee' | 'leaveType' | 'startDate' | 'totalDays' | 'status';
@@ -56,9 +56,13 @@ export const LeavePage = () => {
   const { user } = useAuth();
   const [balances, setBalances] = useState<PortalLeaveBalanceRecord[]>([]);
   const [items, setItems] = useState<PortalLeaveRequestRecord[]>([]);
-  const [meta, setMeta] = useState<PortalLeaveListMeta>({ isApprover: false, pendingApprovalCount: 0 });
+  const [meta, setMeta] = useState<PortalLeaveListMeta>({
+    isApprover: false,
+    pendingApprovalCount: 0,
+    viewAllTeamRequests: false,
+  });
   const [leaveTypes, setLeaveTypes] = useState<PortalLeaveTypeRecord[]>([]);
-  const [currentUserRecord, setCurrentUserRecord] = useState<PortalUserRecord | null>(null);
+  const [approverName, setApproverName] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('my');
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -71,10 +75,13 @@ export const LeavePage = () => {
     [items, user?.id]
   );
 
-  const approvalLeaves = useMemo(
-    () => items.filter((item) => item.permissions.canReview),
-    [items]
-  );
+  const approvalLeaves = useMemo(() => {
+    const others = items.filter((item) => item.user.id !== user?.id);
+    if (meta.viewAllTeamRequests) {
+      return others;
+    }
+    return others.filter((item) => item.permissions.canReview);
+  }, [items, user?.id, meta.viewAllTeamRequests]);
 
   const visibleItems = activeTab === 'my' ? myLeaves : approvalLeaves;
 
@@ -88,23 +95,23 @@ export const LeavePage = () => {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [leaveResult, typeItems, userItems, balanceItems] = await Promise.all([
+      const [leaveResult, typeItems, profileRes, balanceItems] = await Promise.all([
         leaveService.getAll(),
         leaveTypeService.getActive(),
-        portalUserService.getUsers(),
+        authService.getProfile(),
         leaveService.getBalances(),
       ]);
       setItems(leaveResult.items);
       setMeta(leaveResult.meta);
       setLeaveTypes(typeItems);
       setBalances(balanceItems);
-      setCurrentUserRecord(userItems.find((item) => item.id === user?.id) ?? null);
+      setApproverName(profileRes.data?.user.reportingManager?.name);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to load leave requests'));
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -259,15 +266,13 @@ export const LeavePage = () => {
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Leave" subtitle="Access restricted">
-        <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-          You do not have permission to view leave.
-        </div>
+        <AccessDeniedPanel moduleLabel="Leave" />
       </UserLayout>
     );
   }
 
   return (
-    <UserLayout title="Leave" subtitle="Apply leave, track balance, and approve team requests">
+    <UserLayout title="Leave" subtitle="Apply leave and approve requests from your team or department">
       {activeTab === 'my' && balances.length > 0 ? (
         <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {balances.map((balance) => (
@@ -286,7 +291,7 @@ export const LeavePage = () => {
         <div>
           <h2 className="text-lg font-semibold text-body">Leave management</h2>
           <p className="mt-1 text-sm text-muted">
-            Employee → Reporting Manager → HR approval. Balance is deducted when fully approved.
+            You apply leave → your reporting manager approves → HR approves (same department).
           </p>
         </div>
         {canCreate ? (
@@ -344,7 +349,7 @@ export const LeavePage = () => {
           <div className="px-6 py-12 text-center text-sm text-muted">
             {activeTab === 'my'
               ? 'No leave requests yet. Click Apply Leave to submit your first request.'
-              : 'No team leave requests waiting for your approval.'}
+              : 'No pending leave requests from your team or department.'}
           </div>
         ) : (
           <>
@@ -374,7 +379,7 @@ export const LeavePage = () => {
       <SlideOver open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Apply Leave">
         <LeaveRequestForm
           leaveTypes={leaveTypes}
-          approverName={currentUserRecord?.reportingManager?.name}
+          approverName={approverName}
           onSubmit={handleCreate}
           onCancel={() => setIsAddOpen(false)}
           submitLabel="Submit for approval"

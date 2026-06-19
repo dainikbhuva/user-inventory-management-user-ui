@@ -179,7 +179,7 @@ export const UserViewPage = () => {
     .toUpperCase();
 
   return (
-    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="view" fallbackTo={listPath}>
+    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="view" moduleLabel="Users">
     <UserLayout title="View User" subtitle="Employee profile and documents">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>

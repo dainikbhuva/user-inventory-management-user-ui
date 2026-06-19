@@ -82,6 +82,18 @@ export interface DailyAttendanceSheet {
     total: number;
   };
   rows: DailyAttendanceRow[];
+  meta: {
+    scope: 'direct_reports' | 'department' | 'company' | 'none';
+    scopeLabel: string;
+    canMark: boolean;
+  };
+}
+
+export interface AttendanceTeamAccess {
+  canView: boolean;
+  canMark: boolean;
+  scope: 'direct_reports' | 'department' | 'company' | 'none';
+  scopeLabel: string;
 }
 
 export interface MarkAttendancePayload {

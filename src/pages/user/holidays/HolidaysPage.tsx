@@ -19,6 +19,7 @@ import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 type HolidaySortField = 'name' | 'date' | 'holidayType' | 'status';
 
@@ -226,9 +227,7 @@ export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
   const accessDenied = !permsLoading && !canView;
 
   const pageContent = accessDenied ? (
-    <div className="flex h-48 items-center justify-center text-muted">
-      You do not have permission to view holidays.
-    </div>
+    <AccessDeniedPanel moduleLabel="Holidays" />
   ) : (
     <>
       <TableListToolbar

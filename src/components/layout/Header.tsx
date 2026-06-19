@@ -82,7 +82,7 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
         position: 'relative',
         zIndex: 40,
       }}
-      className="h-16 flex items-center px-4 gap-3 flex-shrink-0"
+      className="flex h-16 flex-shrink-0 items-center gap-2 px-3 sm:gap-3 sm:px-4"
     >
       <button
         onClick={onSidebarToggle}
@@ -98,13 +98,13 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
           {title}
         </h1>
         {subtitle && (
-          <p style={{ color: 'var(--color-muted)' }} className="text-xs mt-0.5 truncate">
+          <p style={{ color: 'var(--color-muted)' }} className="mt-0.5 hidden truncate text-xs sm:block">
             {subtitle}
           </p>
         )}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
         {subscription ? (
           <button
             type="button"
@@ -131,7 +131,7 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
         <button
           onClick={() => navigate('/settings/general')}
           style={{ color: 'var(--color-muted)' }}
-          className={`${iconBtn} hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]`}
+          className={`${iconBtn} hidden hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] lg:flex`}
           aria-label="Settings"
         >
           <Settings className="w-[18px] h-[18px]" />
@@ -250,7 +250,7 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
 
         <div
           style={{ backgroundColor: 'var(--color-border)' }}
-          className="w-px h-6 mx-1.5 flex-shrink-0"
+          className="mx-1 hidden h-6 w-px shrink-0 sm:block"
         />
 
         <div ref={userRef} className="relative">
@@ -280,7 +280,7 @@ export const UserHeader = ({ title = 'Dashboard', subtitle, onSidebarToggle }: U
             </div>
             <ChevronDown
               style={{ color: 'var(--color-muted)' }}
-              className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${userOpen ? 'rotate-180' : ''}`}
+              className={`hidden h-3.5 w-3.5 shrink-0 transition-transform duration-200 sm:block ${userOpen ? 'rotate-180' : ''}`}
             />
           </button>
 

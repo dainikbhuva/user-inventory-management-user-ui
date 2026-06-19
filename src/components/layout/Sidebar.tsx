@@ -44,13 +44,21 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
   };
 
   useEffect(() => {
+    let singleChildId: string | null = null;
     for (const group of sidebarGroups) {
       for (const item of group.modules) {
-        if (item.linkType === 'dropdown' && item.children?.some((c) => location.pathname === c.path)) {
+        if (item.linkType !== 'dropdown' || !item.children?.length) continue;
+        if (item.children.some((c) => location.pathname === c.path)) {
           setOpenDropdown(item.id);
           return;
         }
+        if (item.children.length === 1 && !singleChildId) {
+          singleChildId = item.id;
+        }
       }
+    }
+    if (singleChildId) {
+      setOpenDropdown(singleChildId);
     }
   }, [location.pathname, sidebarGroups]);
 

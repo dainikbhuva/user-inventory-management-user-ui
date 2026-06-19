@@ -1,4 +1,5 @@
 import type { AxiosError } from 'axios';
+import { getPermissionErrorMessage } from './permissionMessages';
 
 interface ApiErrorBody {
   success?: boolean;
@@ -11,6 +12,9 @@ interface ApiErrorBody {
 }
 
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  const permissionMessage = getPermissionErrorMessage(error);
+  if (permissionMessage) return permissionMessage;
+
   const axiosError = error as AxiosError<ApiErrorBody>;
   const data = axiosError.response?.data;
 

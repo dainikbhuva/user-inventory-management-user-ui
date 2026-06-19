@@ -54,10 +54,7 @@ axiosClient.interceptors.response.use(
       window.location.href = '/login'
     }
     
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
-      toast.error('You do not have permission to perform this action.')
-    }
+    // 403 is surfaced by page handlers via getApiErrorMessage — avoid duplicate toasts
     
     // Handle 500 Server Error
     if (error.response?.status === 500) {

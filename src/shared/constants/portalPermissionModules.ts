@@ -1,5 +1,6 @@
 /** Portal module codes aligned with menu permission keys. */
 export const PORTAL_PERMISSION_MODULES = {
+  dashboard: { moduleCode: 'dashboard', itemCode: 'dashboard' },
   users: { moduleCode: 'users', itemCode: 'users' },
   roles: { moduleCode: 'roles', itemCode: 'roles' },
   departments: { moduleCode: 'departments', itemCode: 'departments' },

@@ -55,6 +55,7 @@ export interface PortalLeaveRequestRecord {
 export interface PortalLeaveListMeta {
   isApprover: boolean;
   pendingApprovalCount: number;
+  viewAllTeamRequests?: boolean;
 }
 
 export interface CreateLeaveRequestPayload {

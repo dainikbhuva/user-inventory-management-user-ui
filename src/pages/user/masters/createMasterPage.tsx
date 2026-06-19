@@ -16,6 +16,7 @@ import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 type MasterSortField = 'name' | 'code' | 'sortOrder' | 'status' | 'createdAt';
 
@@ -238,9 +239,7 @@ export const createMasterPage = (config: MasterPageConfig) => {
     const accessDenied = hasPermissionGate && !permsLoading && !canView;
 
     const content = accessDenied ? (
-      <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-        You do not have permission to view {config.entityLabel.toLowerCase()}s.
-      </div>
+      <AccessDeniedPanel moduleLabel={config.entityLabel} />
     ) : (
       <>
         <TableListToolbar

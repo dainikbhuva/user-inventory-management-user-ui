@@ -149,7 +149,7 @@ export const UserCreatePage = () => {
   };
 
   return (
-    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="create" fallbackTo={listPath}>
+    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="create" moduleLabel="Users">
     <UserLayout title="Add User" subtitle="Create a new employee portal account">
       <div className="mb-5">
         <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>

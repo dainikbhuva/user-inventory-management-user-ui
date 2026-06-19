@@ -60,6 +60,8 @@ export const API_ENDPOINTS = {
   ATTENDANCE: {
     LIST: '/app/attendance',
     MY_TODAY: '/app/attendance/my-today',
+    MY_RECORDS: '/app/attendance/my-records',
+    TEAM_ACCESS: '/app/attendance/team-access',
     CHECK_IN: '/app/attendance/check-in',
     CHECK_OUT: '/app/attendance/check-out',
     DAILY_SHEET: '/app/attendance/daily-sheet',

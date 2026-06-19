@@ -121,7 +121,7 @@ export const UserEditPage = () => {
   }
 
   return (
-    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="edit" fallbackTo={listPath}>
+    <ModulePermissionGuard moduleCode={moduleCode!} itemCode={itemCode} action="edit" moduleLabel="Users">
     <UserLayout title="Edit User" subtitle="Update employee portal account">
       <div className="mb-5">
         <Button type="button" variant="secondary" onClick={() => navigate(listPath)}>

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { useParams } from 'react-router-dom';
-import { Save, Shield } from 'lucide-react';
+import { ChevronDown, Save } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
@@ -8,85 +8,71 @@ import { PermissionToggle } from '../../../components/common/PermissionToggle';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import { roleService } from '../../../services/role.service';
 import { permissionService } from '../../../services/permission.service';
-import type { PermissionOption, PortalRole } from '../../../shared/types/portal.types';
+import type { PortalRole } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useMenu } from '../../../hooks/useMenu';
 import {
-  isActionEnabled,
+  isActionEnabledForBase,
   keysToMatrix,
   matrixToKeys,
+  normalizeMatrixToBases,
   PERMISSION_ACTION_LABELS,
   PERMISSION_ACTIONS,
-  setMatrixAction,
+  setMatrixActionForBase,
   type PermissionAction,
   type PermissionMatrix,
 } from '../../../shared/utils/permissionMatrix';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { useAuth } from '../../../shared/auth/useAuth';
+import {
+  buildPermissionMenuTree,
+  collectPermissionBasesFromTree,
+  type PermissionTreeChild,
+  type PermissionTreeGroup,
+  type PermissionTreeModule,
+} from '../../../shared/utils/permissionMenuTree';
 
 const PERMISSIONS_MODULE = PORTAL_PERMISSION_MODULES.permissions;
 const PERMISSIONS_PAGE_KEY = `${PERMISSIONS_MODULE.moduleCode}/${PERMISSIONS_MODULE.itemCode}`;
 
-const LINK_TYPE_LABELS: Record<PermissionOption['linkType'], string> = {
-  'module-direct': 'Direct',
-  'module-dropdown': 'Dropdown',
-  'dropdown-item': 'Menu item',
-};
-
-const MenuCell = ({ row }: { row: PermissionOption }) => (
-  <div className="min-w-0 space-y-1.5">
-    <p className="font-medium leading-snug text-body">{row.label}</p>
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-      <span className="truncate">{row.groupName}</span>
-      <span aria-hidden>·</span>
-      <span className="truncate">{row.moduleName}</span>
-      <span className="shrink-0 rounded-sm border border-base bg-surface px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-        {LINK_TYPE_LABELS[row.linkType]}
-      </span>
-    </div>
-  </div>
-);
-
-interface PermissionRowProps {
-  row: PermissionOption;
+interface ActionCellsProps {
+  permissionKey: string;
+  label: string;
   isSuperAdmin: boolean;
   matrix: PermissionMatrix;
   onToggle: (base: string, action: PermissionAction, enabled: boolean) => void;
-  zebra?: boolean;
   readOnly?: boolean;
 }
 
-const PermissionRowCells = ({ row, isSuperAdmin, matrix, onToggle, zebra, readOnly }: PermissionRowProps) => {
-  const viewEnabled = isSuperAdmin || isActionEnabled(matrix, row.key, 'view');
+const PermissionActionCells = ({
+  permissionKey,
+  label,
+  isSuperAdmin,
+  matrix,
+  onToggle,
+  readOnly,
+}: ActionCellsProps) => {
+  const viewEnabled = isSuperAdmin || isActionEnabledForBase(matrix, permissionKey, 'view');
   const rowDisabled = isSuperAdmin || readOnly;
 
   return (
     <>
-      <td
-        className={`permission-menu-cell border-r border-base px-4 py-3 ${
-          zebra ? 'bg-surface-2/40' : 'bg-surface'
-        }`}
-      >
-        <MenuCell row={row} />
-      </td>
       {PERMISSION_ACTIONS.map((action) => {
         const isView = action === 'view';
-        const checked = isSuperAdmin ? true : isActionEnabled(matrix, row.key, action);
+        const checked = isSuperAdmin ? true : isActionEnabledForBase(matrix, permissionKey, action);
         const disabled = rowDisabled || (!isView && !viewEnabled);
 
         return (
-          <td
-            key={action}
-            className={`permission-action-cell py-3 ${zebra ? 'bg-surface-2/40' : 'bg-surface'}`}
-          >
+          <td key={action} className="permission-action-cell bg-surface py-3">
             <div className="flex items-center justify-center">
               <PermissionToggle
                 checked={checked}
                 disabled={disabled}
-                ariaLabel={`${row.label} ${PERMISSION_ACTION_LABELS[action]}`}
-                onChange={(enabled) => onToggle(row.key, action, enabled)}
+                ariaLabel={`${label} ${PERMISSION_ACTION_LABELS[action]}`}
+                onChange={(enabled) => onToggle(permissionKey, action, enabled)}
               />
             </div>
           </td>
@@ -96,9 +82,108 @@ const PermissionRowCells = ({ row, isSuperAdmin, matrix, onToggle, zebra, readOn
   );
 };
 
+const PermissionChildRow = ({
+  child,
+  isSuperAdmin,
+  matrix,
+  onToggle,
+  readOnly,
+}: {
+  child: PermissionTreeChild;
+  isSuperAdmin: boolean;
+  matrix: PermissionMatrix;
+  onToggle: (base: string, action: PermissionAction, enabled: boolean) => void;
+  readOnly?: boolean;
+}) => (
+  <tr className="border-b border-base last:border-b-0 bg-surface-2/20">
+    <td className="permission-menu-cell border-r border-base py-3 pl-10 pr-4">
+      <p className="text-sm font-medium text-body">{child.label}</p>
+      <p className="mt-0.5 text-xs text-muted">Dropdown item</p>
+    </td>
+    <PermissionActionCells
+      permissionKey={child.key}
+      label={child.label}
+      isSuperAdmin={isSuperAdmin}
+      matrix={matrix}
+      onToggle={onToggle}
+      readOnly={readOnly}
+    />
+  </tr>
+);
+
+const PermissionModuleRows = ({
+  groupId,
+  module,
+  isSuperAdmin,
+  matrix,
+  onToggle,
+  readOnly,
+  expanded,
+  onToggleExpand,
+}: {
+  groupId: string;
+  module: PermissionTreeModule;
+  isSuperAdmin: boolean;
+  matrix: PermissionMatrix;
+  onToggle: (base: string, action: PermissionAction, enabled: boolean) => void;
+  readOnly?: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) => {
+  if (module.linkType === 'dropdown' && module.children?.length) {
+    return (
+      <>
+        <tr className="border-b border-base bg-surface-2/50">
+          <td colSpan={1 + PERMISSION_ACTIONS.length} className="px-4 py-2">
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="flex w-full items-center gap-2 rounded-sm py-1.5 text-left text-sm font-semibold text-body hover:text-primary"
+            >
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
+              />
+              <span>{module.label}</span>
+            </button>
+          </td>
+        </tr>
+        {expanded
+          ? module.children.map((child) => (
+              <PermissionChildRow
+                key={`${groupId}-${child.key}`}
+                child={child}
+                isSuperAdmin={isSuperAdmin}
+                matrix={matrix}
+                onToggle={onToggle}
+                readOnly={readOnly}
+              />
+            ))
+          : null}
+      </>
+    );
+  }
+
+  return (
+    <tr className="border-b border-base last:border-b-0">
+      <td className="permission-menu-cell border-r border-base px-4 py-3">
+        <p className="font-medium text-body">{module.label}</p>
+        <p className="mt-0.5 text-xs text-muted">Direct link</p>
+      </td>
+      <PermissionActionCells
+        permissionKey={module.permissionKey}
+        label={module.label}
+        isSuperAdmin={isSuperAdmin}
+        matrix={matrix}
+        onToggle={onToggle}
+        readOnly={readOnly}
+      />
+    </tr>
+  );
+};
+
 const hasViewAccessToPage = (matrix: PermissionMatrix, routePageKey?: string) =>
-  isActionEnabled(matrix, PERMISSIONS_PAGE_KEY, 'view') ||
-  (routePageKey ? isActionEnabled(matrix, routePageKey, 'view') : false);
+  isActionEnabledForBase(matrix, PERMISSIONS_PAGE_KEY, 'view') ||
+  (routePageKey ? isActionEnabledForBase(matrix, routePageKey, 'view') : false);
 
 const RolePermissionsPageContent = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode: string; itemCode?: string }>();
@@ -116,13 +201,13 @@ const RolePermissionsPageContent = () => {
   const canView = routePerms.canView || catalogPerms.canView || viewerIsSuperAdmin;
   const canEdit = routePerms.canEdit || catalogPerms.canEdit || viewerIsSuperAdmin;
 
-  const { reload: reloadMenu } = useMenu();
+  const { groups: menuGroups, reload: reloadMenu } = useMenu();
   const rolesRef = useRef<PortalRole[]>([]);
   const [roles, setRoles] = useState<PortalRole[]>([]);
-  const [options, setOptions] = useState<PermissionOption[]>([]);
+  const [options, setOptions] = useState<Awaited<ReturnType<typeof permissionService.getOptions>>>([]);
   const [selectedRoleId, setSelectedRoleId] = useState('');
-  const [moduleFilter, setModuleFilter] = useState('all');
   const [matrix, setMatrix] = useState<PermissionMatrix>({});
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRoleLoading, setIsRoleLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -153,6 +238,16 @@ const RolePermissionsPageContent = () => {
     void loadBase();
   }, [loadBase]);
 
+  const permissionTree = useMemo(
+    () => buildPermissionMenuTree(options, menuGroups),
+    [options, menuGroups]
+  );
+
+  const uiPermissionBases = useMemo(
+    () => collectPermissionBasesFromTree(permissionTree),
+    [permissionTree]
+  );
+
   useEffect(() => {
     if (!selectedRoleId) return;
 
@@ -167,7 +262,12 @@ const RolePermissionsPageContent = () => {
           (await permissionService.getRolePermissions(selectedRoleId));
 
         if (!cancelled) {
-          setMatrix(keysToMatrix(keys));
+          const raw = keysToMatrix(keys);
+          setMatrix(
+            uiPermissionBases.length > 0
+              ? normalizeMatrixToBases(raw, uiPermissionBases)
+              : raw
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -185,38 +285,31 @@ const RolePermissionsPageContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedRoleId]);
+  }, [selectedRoleId, uiPermissionBases]);
 
-  const moduleOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const option of options) {
-      if (!map.has(option.moduleCode)) {
-        map.set(option.moduleCode, option.moduleName);
+  useEffect(() => {
+    const next: Record<string, boolean> = {};
+    for (const group of permissionTree) {
+      for (const mod of group.modules) {
+        if (mod.linkType === 'dropdown' && mod.children?.length) {
+          next[`${group.id}:${mod.moduleCode}`] = true;
+        }
       }
     }
-    return Array.from(map.entries())
-      .map(([code, name]) => ({ code, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [options]);
+    setExpandedModules((prev) => ({ ...next, ...prev }));
+  }, [permissionTree]);
 
-  const visibleRows = useMemo(() => {
-    const rows = [...options].sort((a, b) => {
-      const group = a.groupName.localeCompare(b.groupName);
-      if (group !== 0) return group;
-      const module = a.moduleName.localeCompare(b.moduleName);
-      if (module !== 0) return module;
-      return a.label.localeCompare(b.label);
-    });
-    if (moduleFilter === 'all') return rows;
-    return rows.filter((row) => row.moduleCode === moduleFilter);
-  }, [options, moduleFilter]);
-
-  const selectedRole = roles.find((role) => role.id === selectedRoleId);
-  const isSuperAdmin = selectedRole?.code === 'super_admin';
+  const isSuperAdmin =
+    roles.find((role) => role.id === selectedRoleId)?.code === 'super_admin';
 
   const handleToggle = (base: string, action: PermissionAction, enabled: boolean) => {
     if (!canEdit || !base) return;
-    setMatrix((prev) => setMatrixAction(prev, base, action, enabled));
+    setMatrix((prev) => setMatrixActionForBase(prev, base, action, enabled));
+  };
+
+  const toggleModuleExpand = (groupId: string, moduleCode: string) => {
+    const key = `${groupId}:${moduleCode}`;
+    setExpandedModules((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSave = async () => {
@@ -230,11 +323,13 @@ const RolePermissionsPageContent = () => {
 
     try {
       setIsSaving(true);
-      await permissionService.updateRolePermissions(selectedRoleId, matrixToKeys(matrix));
+      const normalized = normalizeMatrixToBases(matrix, uiPermissionBases);
+      await permissionService.updateRolePermissions(selectedRoleId, matrixToKeys(normalized));
       toast.success('Role permissions saved successfully.');
       const updatedRoles = await roleService.getRoles();
       setRoles(updatedRoles);
       rolesRef.current = updatedRoles;
+      setMatrix(normalized);
       await reloadMenu(true);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to save permissions'));
@@ -243,34 +338,181 @@ const RolePermissionsPageContent = () => {
     }
   };
 
+  const renderDesktopTable = () => (
+    <table className="permission-matrix w-full text-sm">
+      <colgroup>
+        <col className="permission-menu-col" />
+        {PERMISSION_ACTIONS.map((action) => (
+          <col key={action} className="permission-action-col" />
+        ))}
+      </colgroup>
+      <thead>
+        <tr className="border-b border-base bg-surface-2">
+          <th className="permission-menu-cell border-r border-base px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-body">
+            Menu (like sidebar)
+          </th>
+          {PERMISSION_ACTIONS.map((action) => (
+            <th
+              key={action}
+              className="permission-action-cell py-3 text-center text-xs font-semibold uppercase tracking-wide text-body"
+            >
+              {PERMISSION_ACTION_LABELS[action]}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {permissionTree.map((group) => (
+          <Fragment key={group.id}>
+            {group.name ? (
+              <tr className="border-b border-base bg-surface-2">
+                <td colSpan={1 + PERMISSION_ACTIONS.length} className="px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-2">
+                    {group.name}
+                  </p>
+                </td>
+              </tr>
+            ) : null}
+            {group.modules.map((mod) => (
+              <PermissionModuleRows
+                key={`${group.id}-${mod.moduleCode}`}
+                groupId={group.id}
+                module={mod}
+                isSuperAdmin={isSuperAdmin}
+                matrix={matrix}
+                onToggle={handleToggle}
+                readOnly={!canEdit}
+                expanded={expandedModules[`${group.id}:${mod.moduleCode}`] ?? true}
+                onToggleExpand={() => toggleModuleExpand(group.id, mod.moduleCode)}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const renderMobileGroup = (group: PermissionTreeGroup) => (
+    <section key={group.id} className="space-y-3">
+      {group.name ? (
+        <div className="rounded-sm border border-base bg-surface-2 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">{group.name}</p>
+        </div>
+      ) : null}
+      {group.modules.map((mod) => {
+        const expandKey = `${group.id}:${mod.moduleCode}`;
+        const expanded = expandedModules[expandKey] ?? true;
+
+        if (mod.linkType === 'dropdown' && mod.children?.length) {
+          return (
+            <div key={mod.moduleCode} className="overflow-hidden rounded-sm border border-base">
+              <button
+                type="button"
+                onClick={() => toggleModuleExpand(group.id, mod.moduleCode)}
+                className="flex w-full items-center justify-between gap-2 bg-surface-2 px-4 py-3 text-left"
+              >
+                <span className="font-semibold text-body">{mod.label}</span>
+                <ChevronDown
+                  className={`h-4 w-4 text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {expanded
+                ? mod.children.map((child) => (
+                    <article key={child.key} className="border-t border-base bg-surface p-4">
+                      <p className="pl-2 text-sm font-medium text-body">{child.label}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {PERMISSION_ACTIONS.map((action) => {
+                          const viewEnabled =
+                            isSuperAdmin || isActionEnabledForBase(matrix, child.key, 'view');
+                          const checked = isSuperAdmin
+                            ? true
+                            : isActionEnabledForBase(matrix, child.key, action);
+                          const disabled =
+                            isSuperAdmin || !canEdit || (action !== 'view' && !viewEnabled);
+                          return (
+                            <div
+                              key={action}
+                              className="flex items-center justify-between rounded-sm border border-base px-3 py-2"
+                            >
+                              <span className="text-xs text-body">
+                                {PERMISSION_ACTION_LABELS[action]}
+                              </span>
+                              <PermissionToggle
+                                checked={checked}
+                                disabled={disabled}
+                                ariaLabel={`${child.label} ${PERMISSION_ACTION_LABELS[action]}`}
+                                onChange={(enabled) => handleToggle(child.key, action, enabled)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  ))
+                : null}
+            </div>
+          );
+        }
+
+        return (
+          <article
+            key={mod.moduleCode}
+            className="rounded-sm border border-base bg-surface p-4 shadow-sm"
+          >
+            <p className="font-medium text-body">{mod.label}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {PERMISSION_ACTIONS.map((action) => {
+                const viewEnabled =
+                  isSuperAdmin || isActionEnabledForBase(matrix, mod.permissionKey, 'view');
+                const checked = isSuperAdmin
+                  ? true
+                  : isActionEnabledForBase(matrix, mod.permissionKey, action);
+                const disabled =
+                  isSuperAdmin || !canEdit || (action !== 'view' && !viewEnabled);
+                return (
+                  <div
+                    key={action}
+                    className="flex items-center justify-between rounded-sm border border-base px-3 py-2"
+                  >
+                    <span className="text-xs text-body">{PERMISSION_ACTION_LABELS[action]}</span>
+                    <PermissionToggle
+                      checked={checked}
+                      disabled={disabled}
+                      ariaLabel={`${mod.label} ${PERMISSION_ACTION_LABELS[action]}`}
+                      onChange={(enabled) => handleToggle(mod.permissionKey, action, enabled)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Role to Permission" subtitle="Access restricted">
-        <div className="flex min-h-[min(50vh,20rem)] flex-col items-center justify-center rounded-sm border border-base bg-surface px-6 py-12 text-center">
-          <Shield className="mb-3 h-10 w-10 text-muted" />
-          <p className="text-body font-medium">Access restricted</p>
-          <p className="mt-2 max-w-md text-sm text-muted">
-            You do not have permission to manage role permissions. Contact your Super Admin if you
-            need access.
-          </p>
-        </div>
+        <AccessDeniedPanel moduleLabel="Role permissions" />
       </UserLayout>
     );
   }
 
   const tableBusy = isLoading || isRoleLoading;
+  const hasContent = permissionTree.some((g) => g.modules.length > 0);
 
   return (
-    <UserLayout title="Role to Permission" subtitle="Control module access and actions per role">
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-body">Permissions matrix</h2>
-          <p className="mt-1 text-sm text-muted">
-            Select a role and configure view, create, edit, and other actions for each menu item.
-          </p>
-        </div>
-        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end lg:w-auto">
-          <div className="w-full sm:min-w-[220px] sm:flex-1 lg:flex-none">
+    <UserLayout title="Role to Permission" subtitle="Control sidebar access per role">
+      <div className="mb-5 pb-16 md:pb-0">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-semibold text-body">Sidebar permissions</h2>
+            <p className="mt-1 hidden text-sm text-muted sm:block">
+              Set sidebar access per menu — expand dropdowns to configure sub-items.
+            </p>
+          </div>
+          <div className="w-full md:w-auto md:min-w-[220px] md:shrink-0">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted">
               Role
             </label>
@@ -287,12 +529,12 @@ const RolePermissionsPageContent = () => {
               ))}
             </Select>
           </div>
-          {!isSuperAdmin && visibleRows.length > 0 && canEdit && (
+          {!isSuperAdmin && hasContent && canEdit && (
             <Button
               type="button"
               onClick={handleSave}
               disabled={isSaving || !selectedRoleId}
-              className="w-full sm:w-auto"
+              className="hidden md:inline-flex md:shrink-0"
             >
               <Save className="mr-2 inline h-4 w-4" />
               {isSaving ? 'Saving...' : 'Save permissions'}
@@ -301,137 +543,43 @@ const RolePermissionsPageContent = () => {
         </div>
       </div>
 
-      {isSuperAdmin && (
-        <div className="mb-4 flex items-start gap-3 rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-body">
-          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <p>
-            Super Admin always has full access to all modules. Permissions cannot be restricted for
-            this role.
-          </p>
+      {!isSuperAdmin && hasContent && canEdit && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-base bg-surface p-4 md:hidden"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || !selectedRoleId}
+            className="w-full"
+          >
+            <Save className="mr-2 inline h-4 w-4" />
+            {isSaving ? 'Saving...' : 'Save permissions'}
+          </Button>
         </div>
       )}
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="w-full sm:max-w-xs">
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted">
-            Module filter
-          </label>
-          <Select
-            value={moduleFilter}
-            onChange={(e) => setModuleFilter(e.target.value)}
-            disabled={tableBusy || options.length === 0}
-          >
-            <option value="all">All modules</option>
-            {moduleOptions.map((module) => (
-              <option key={module.code} value={module.code}>
-                {module.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {selectedRole && (
-          <p className="text-sm text-muted">
-            Editing permissions for <span className="font-medium text-body">{selectedRole.name}</span>
-          </p>
-        )}
-      </div>
-
-      <div className="rounded-sm border border-base bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-sm border border-base bg-surface shadow-sm">
         {tableBusy ? (
           <div className="flex min-h-[12rem] items-center justify-center text-muted">
             Loading permissions...
           </div>
         ) : options.length === 0 ? (
           <div className="flex min-h-[12rem] items-center justify-center px-6 text-center text-sm text-muted">
-            No modules are available in your plan yet. Add module groups to your subscription plan in
-            admin.
+            No modules are available in your plan yet. Add module groups to your subscription plan
+            in admin.
           </div>
-        ) : visibleRows.length === 0 ? (
+        ) : !hasContent ? (
           <div className="flex min-h-[12rem] items-center justify-center text-sm text-muted">
-            No menu items match the selected module filter.
+            No menu items available.
           </div>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="permission-matrix text-sm">
-                <colgroup>
-                  <col style={{ width: '28%' }} />
-                  {PERMISSION_ACTIONS.map((action) => (
-                    <col key={action} style={{ width: '10.28%' }} />
-                  ))}
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-base bg-surface-2">
-                    <th className="permission-menu-cell border-r border-base px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-body">
-                      Menu
-                    </th>
-                    {PERMISSION_ACTIONS.map((action) => (
-                      <th
-                        key={action}
-                        className="permission-action-cell py-3 text-center text-xs font-semibold uppercase tracking-wide text-body"
-                      >
-                        <span className="block leading-tight">{PERMISSION_ACTION_LABELS[action]}</span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleRows.map((row, index) => (
-                    <tr key={row.key} className="border-b border-base last:border-b-0">
-                      <PermissionRowCells
-                        row={row}
-                        isSuperAdmin={isSuperAdmin}
-                        matrix={matrix}
-                        onToggle={handleToggle}
-                        zebra={index % 2 === 1}
-                        readOnly={!canEdit}
-                      />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <div className="hidden overflow-x-auto md:block">{renderDesktopTable()}</div>
 
-            <div className="space-y-3 p-4 md:hidden">
-              {visibleRows.map((row) => {
-                const viewEnabled = isSuperAdmin || isActionEnabled(matrix, row.key, 'view');
-                const rowDisabled = isSuperAdmin || !canEdit;
-
-                return (
-                  <article
-                    key={row.key}
-                    className="rounded-sm border border-base bg-surface-2/30 p-4 shadow-sm"
-                  >
-                    <MenuCell row={row} />
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {PERMISSION_ACTIONS.map((action) => {
-                        const isView = action === 'view';
-                        const checked = isSuperAdmin
-                          ? true
-                          : isActionEnabled(matrix, row.key, action);
-                        const disabled = rowDisabled || (!isView && !viewEnabled);
-
-                        return (
-                          <div
-                            key={action}
-                            className="flex items-center justify-between gap-2 rounded-sm border border-base bg-surface px-3 py-2"
-                          >
-                            <span className="text-xs font-medium text-body">
-                              {PERMISSION_ACTION_LABELS[action]}
-                            </span>
-                            <PermissionToggle
-                              checked={checked}
-                              disabled={disabled}
-                              ariaLabel={`${row.label} ${PERMISSION_ACTION_LABELS[action]}`}
-                              onChange={(enabled) => handleToggle(row.key, action, enabled)}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="space-y-6 p-4 md:hidden">
+              {permissionTree.map((group) => renderMobileGroup(group))}
             </div>
           </>
         )}

@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from './api/endpoints';
 import type { ApiResponse } from '../shared/types/api.types';
 import type {
   AttendanceSettings,
+  AttendanceTeamAccess,
   DailyAttendanceSheet,
   MarkAttendancePayload,
   MyTodayAttendance,
@@ -10,6 +11,24 @@ import type {
 } from '../shared/types/attendance.types';
 
 export const attendanceService = {
+  async getMyRecords(from?: string, to?: string): Promise<PortalAttendanceRecord[]> {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString();
+    const response = await axiosClient.get<ApiResponse<{ items: PortalAttendanceRecord[] }>>(
+      `${API_ENDPOINTS.ATTENDANCE.MY_RECORDS}${query ? `?${query}` : ''}`
+    );
+    return response.data.data!.items;
+  },
+
+  async getTeamAccess(): Promise<AttendanceTeamAccess> {
+    const response = await axiosClient.get<ApiResponse<AttendanceTeamAccess>>(
+      API_ENDPOINTS.ATTENDANCE.TEAM_ACCESS
+    );
+    return response.data.data!;
+  },
+
   async getMyToday(): Promise<MyTodayAttendance> {
     const response = await axiosClient.get<ApiResponse<MyTodayAttendance>>(API_ENDPOINTS.ATTENDANCE.MY_TODAY);
     return response.data.data!;

@@ -171,13 +171,22 @@
     overflow-wrap: anywhere;
   }
 
+  table.permission-matrix tbody tr td.permission-menu-cell {
+    background-color: var(--color-surface);
+  }
+
   table.permission-matrix .permission-action-cell {
-    width: 4.75rem;
-    min-width: 4.75rem;
-    max-width: 4.75rem;
     text-align: center;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  table.permission-matrix col.permission-menu-col {
+    width: 28%;
+  }
+
+  table.permission-matrix col.permission-action-col {
+    width: 12%;
   }
 }
 

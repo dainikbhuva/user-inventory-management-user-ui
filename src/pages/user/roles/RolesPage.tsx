@@ -18,6 +18,7 @@ import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 
 type RoleSortField = 'name' | 'code' | 'type' | 'status' | 'createdAt';
@@ -224,9 +225,7 @@ export const RolesPage = () => {
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Roles" subtitle="Access restricted">
-        <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-          You do not have permission to view roles.
-        </div>
+        <AccessDeniedPanel moduleLabel="Roles" />
       </UserLayout>
     );
   }

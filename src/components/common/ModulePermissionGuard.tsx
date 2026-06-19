@@ -1,21 +1,21 @@
 import type { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
 import { useModulePermissions } from '../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from './AccessDeniedPanel';
 
 interface ModulePermissionGuardProps {
   moduleCode: string;
   itemCode?: string;
   action: 'view' | 'create' | 'edit' | 'delete';
+  moduleLabel?: string;
   children: ReactNode;
-  fallbackTo?: string;
 }
 
 export const ModulePermissionGuard = ({
   moduleCode,
   itemCode,
   action,
+  moduleLabel,
   children,
-  fallbackTo = '/dashboard',
 }: ModulePermissionGuardProps) => {
   const perms = useModulePermissions(moduleCode, itemCode);
 
@@ -35,7 +35,15 @@ export const ModulePermissionGuard = ({
           : perms.canDelete;
 
   if (!allowed) {
-    return <Navigate to={fallbackTo} replace />;
+    const label = moduleLabel ?? itemCode ?? moduleCode;
+    const actionLabel =
+      action === 'view' ? 'view' : action === 'create' ? 'create' : action === 'edit' ? 'edit' : 'delete';
+    return (
+      <AccessDeniedPanel
+        moduleLabel={label}
+        message={`You do not have permission to ${actionLabel} ${label}. Contact your company admin if you need access.`}
+      />
+    );
   }
 
   return <>{children}</>;

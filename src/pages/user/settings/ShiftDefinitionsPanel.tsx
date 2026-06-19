@@ -16,6 +16,7 @@ import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 
 type ShiftSortField = 'name' | 'code' | 'startTime' | 'status';
@@ -207,11 +208,7 @@ export const ShiftDefinitionsPanel = () => {
   );
 
   if (!canView) {
-    return (
-      <div className="flex h-32 items-center justify-center p-6 text-sm text-muted">
-        You do not have permission to view shift templates.
-      </div>
-    );
+    return <AccessDeniedPanel moduleLabel="Shifts" compact />;
   }
 
   return (

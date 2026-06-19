@@ -16,6 +16,7 @@ import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import {
   ANNOUNCEMENT_PRIORITY_STYLES,
@@ -263,9 +264,7 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
   if (!permsLoading && !canView && !embedded) {
     return (
       <UserLayout title="Announcements" subtitle="Access restricted">
-        <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-          You do not have permission to view announcements.
-        </div>
+        <AccessDeniedPanel moduleLabel="Announcements" />
       </UserLayout>
     );
   }
@@ -273,9 +272,7 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
   const accessDenied = !permsLoading && !canView;
 
   const pageContent = accessDenied ? (
-    <div className="flex h-48 items-center justify-center text-muted">
-      You do not have permission to view announcements.
-    </div>
+    <AccessDeniedPanel moduleLabel="Announcements" />
   ) : (
     <>
       <TableListToolbar

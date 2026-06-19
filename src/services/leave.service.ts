@@ -17,7 +17,7 @@ export const leaveService = {
     >(API_ENDPOINTS.LEAVE.LIST);
     return {
       items: response.data.data?.items ?? [],
-      meta: response.data.data?.meta ?? { isApprover: false, pendingApprovalCount: 0 },
+      meta: response.data.data?.meta ?? { isApprover: false, pendingApprovalCount: 0, viewAllTeamRequests: false },
     };
   },
 

@@ -9,6 +9,7 @@ import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { ShiftDefinitionsPanel } from './ShiftDefinitionsPanel';
 import { usePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 const WEEKDAYS = [
   { value: 0, label: 'Sun' },
@@ -71,11 +72,7 @@ export const SettingsAttendancePage = () => {
   };
 
   if (!permsLoading && !canViewAttendance && !canViewShifts) {
-    return (
-      <div className="flex h-64 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-        You do not have permission to view attendance or shift settings.
-      </div>
-    );
+    return <AccessDeniedPanel moduleLabel="Attendance settings" compact />;
   }
 
   if (canViewAttendance && (isLoading || !form)) {

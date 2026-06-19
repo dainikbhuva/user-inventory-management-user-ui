@@ -18,6 +18,7 @@ import { getEmployeeTypeLabel } from '../../../shared/constants/employeeType';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useAuth } from '../../../shared/auth/useAuth';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 type UserSortField =
   | 'name'
@@ -241,9 +242,7 @@ export const UsersPage = () => {
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Users" subtitle="Access restricted">
-        <div className="flex h-48 items-center justify-center rounded-sm border border-base bg-surface text-muted">
-          You do not have permission to view users.
-        </div>
+        <AccessDeniedPanel moduleLabel="Users" />
       </UserLayout>
     );
   }
