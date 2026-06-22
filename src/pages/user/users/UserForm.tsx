@@ -31,6 +31,7 @@ export interface UserFormValues {
 interface UserFormProps {
   mode: 'create' | 'edit';
   value: UserFormValues;
+  errors?: Partial<Record<keyof UserFormValues, string>>;
   roles: PortalRole[];
   departments: PortalMasterRecord[];
   designations: PortalMasterRecord[];
@@ -45,6 +46,7 @@ interface UserFormProps {
   autoEmployeeCode?: boolean;
   isGeneratingCode?: boolean;
   onChange: (value: UserFormValues) => void;
+  onClearFieldError?: (field: keyof UserFormValues) => void;
   onAutoGenerateCode?: () => void;
   onEmployeeCodeManualChange?: () => void;
   onCancel: () => void;
@@ -83,6 +85,7 @@ const fullWidthField = 'sm:col-span-2 xl:col-span-3';
 export const UserForm = ({
   mode,
   value,
+  errors,
   roles,
   departments,
   designations,
@@ -97,6 +100,7 @@ export const UserForm = ({
   autoEmployeeCode = false,
   isGeneratingCode = false,
   onChange,
+  onClearFieldError,
   onAutoGenerateCode,
   onEmployeeCodeManualChange,
   onCancel,
@@ -106,6 +110,13 @@ export const UserForm = ({
   const isCreate = mode === 'create';
   const set = <K extends keyof UserFormValues>(key: K, val: UserFormValues[K]) =>
     onChange({ ...value, [key]: val });
+
+  const touch = <K extends keyof UserFormValues>(key: K, val: UserFormValues[K]) => {
+    onClearFieldError?.(key);
+    set(key, val);
+  };
+
+  const fieldError = (key: keyof UserFormValues) => errors?.[key];
 
   const managerOptions = managers.filter(
     (manager) => manager.status === 'active' && manager.id !== excludeManagerId
@@ -128,40 +139,44 @@ export const UserForm = ({
                 </FormField>
               ) : null}
 
-              <FormField label="First name" required>
+              <FormField label="First name" required error={fieldError('firstName')}>
                 <Input
                   value={value.firstName}
-                  onChange={(e) => set('firstName', e.target.value)}
+                  onChange={(e) => touch('firstName', e.target.value)}
                   placeholder="First name"
                   disabled={isSubmitting}
+                  error={Boolean(fieldError('firstName'))}
                 />
               </FormField>
 
-              <FormField label="Last name" required>
+              <FormField label="Last name" required error={fieldError('lastName')}>
                 <Input
                   value={value.lastName}
-                  onChange={(e) => set('lastName', e.target.value)}
+                  onChange={(e) => touch('lastName', e.target.value)}
                   placeholder="Last name"
                   disabled={isSubmitting}
+                  error={Boolean(fieldError('lastName'))}
                 />
               </FormField>
 
-              <FormField label="Email" required>
+              <FormField label="Email" required error={fieldError('email')}>
                 <Input
                   type="email"
                   value={value.email}
-                  onChange={(e) => set('email', e.target.value)}
+                  onChange={(e) => touch('email', e.target.value)}
                   placeholder="user@company.com"
                   disabled={isSubmitting}
+                  error={Boolean(fieldError('email'))}
                 />
               </FormField>
 
-              <FormField label="Mobile">
+              <FormField label="Mobile" error={fieldError('phone')}>
                 <Input
                   value={value.phone}
-                  onChange={(e) => set('phone', e.target.value)}
-                  placeholder="Mobile number"
+                  onChange={(e) => touch('phone', e.target.value)}
+                  placeholder="10-digit mobile number"
                   disabled={isSubmitting}
+                  error={Boolean(fieldError('phone'))}
                 />
               </FormField>
 
@@ -187,12 +202,13 @@ export const UserForm = ({
                 />
               </FormField>
 
-              <FormField label="Address" className={fullWidthField}>
+              <FormField label="Address" className={fullWidthField} error={fieldError('address')}>
                 <Input
                   value={value.address}
-                  onChange={(e) => set('address', e.target.value)}
+                  onChange={(e) => touch('address', e.target.value)}
                   placeholder="Street, city, state, postal code"
                   disabled={isSubmitting}
+                  error={Boolean(fieldError('address'))}
                 />
               </FormField>
             </div>
@@ -205,17 +221,18 @@ export const UserForm = ({
           >
             <div className={fieldGrid}>
               {isCreate ? (
-                <FormField label="Employee code" required className="xl:col-span-2">
+                <FormField label="Employee code" required className="xl:col-span-2" error={fieldError('employeeCode')}>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                       value={value.employeeCode}
                       onChange={(e) => {
                         onEmployeeCodeManualChange?.();
-                        set('employeeCode', e.target.value.toUpperCase());
+                        touch('employeeCode', e.target.value.toUpperCase());
                       }}
                       placeholder="EMP-COMP-0001"
                       disabled={isSubmitting || autoEmployeeCode}
                       className="flex-1 font-mono"
+                      error={Boolean(fieldError('employeeCode'))}
                     />
                     <Button
                       type="button"
@@ -234,11 +251,12 @@ export const UserForm = ({
                 </FormField>
               ) : null}
 
-              <FormField label="Role" required className={isCreate ? '' : 'xl:col-span-2'}>
+              <FormField label="Role" required className={isCreate ? '' : 'xl:col-span-2'} error={fieldError('roleId')}>
                 <Select
                   value={value.roleId}
-                  onChange={(e) => set('roleId', e.target.value)}
+                  onChange={(e) => touch('roleId', e.target.value)}
                   disabled={isSubmitting || isLoadingRoles}
+                  error={Boolean(fieldError('roleId'))}
                 >
                   <option value="">Select role</option>
                   {roles.map((role) => (

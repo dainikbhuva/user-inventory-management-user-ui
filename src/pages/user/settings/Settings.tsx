@@ -8,6 +8,14 @@ import { LeaveTypesPage } from '../leave-types/LeaveTypesPage';
 import { HolidaysPage } from '../holidays/HolidaysPage';
 import { AnnouncementsSettingsPanel } from '../announcements/AnnouncementsPage';
 import { SettingsBillingPage } from './SettingsBillingPage';
+import { InventoryCategoriesSettingsPanel } from '../inventory-categories/InventoryCategoriesPage';
+import { InventoryUnitsSettingsPanel } from '../inventory-units/InventoryUnitsPage';
+import { InventoryBrandsSettingsPanel } from '../inventory-brands/InventoryBrandsPage';
+import { InventoryWarehousesSettingsPanel } from '../inventory-warehouses/InventoryWarehousesPage';
+import { InventorySuppliersSettingsPanel } from '../inventory-suppliers/InventorySuppliersPage';
+import { InventoryTaxesSettingsPanel } from '../inventory-taxes/InventoryTaxesPage';
+import { CustomersSettingsPanel } from '../customers/CustomersPage';
+import { BOMsSettingsPanel } from '../boms/BOMsPage';
 
 export { SettingsLayout };
 
@@ -24,4 +32,12 @@ export const SettingsRoutes = {
   Announcements: AnnouncementsSettingsPanel,
   Billing: SettingsBillingPage,
   Shifts: SettingsAttendancePage,
+  InventoryCategories: InventoryCategoriesSettingsPanel,
+  InventoryUnits: InventoryUnitsSettingsPanel,
+  InventoryBrands: InventoryBrandsSettingsPanel,
+  InventoryWarehouses: InventoryWarehousesSettingsPanel,
+  InventorySuppliers: InventorySuppliersSettingsPanel,
+  InventoryTaxes: InventoryTaxesSettingsPanel,
+  Customers: CustomersSettingsPanel,
+  BOMs: BOMsSettingsPanel,
 };

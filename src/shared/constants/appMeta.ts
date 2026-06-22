@@ -98,6 +98,34 @@ export const ROUTE_PAGE_META: Record<string, PageMeta> = {
     title: 'Announcements',
     description: 'Create and manage company-wide announcements.',
   },
+  '/settings/inventory-categories': {
+    title: 'Categories',
+    description: 'Manage product categories for inventory.',
+  },
+  '/settings/inventory-units': {
+    title: 'Units',
+    description: 'Manage measurement units for inventory items.',
+  },
+  '/settings/inventory-brands': {
+    title: 'Brands',
+    description: 'Manage product brands for inventory.',
+  },
+  '/settings/inventory-warehouses': {
+    title: 'Warehouses / Locations',
+    description: 'Manage storage locations and warehouses.',
+  },
+  '/settings/inventory-suppliers': {
+    title: 'Suppliers',
+    description: 'Manage vendors and suppliers.',
+  },
+  '/settings/inventory-suppliers/new': {
+    title: 'Add Supplier',
+    description: 'Create a new vendor or supplier record.',
+  },
+  '/settings/inventory-taxes': {
+    title: 'Tax / HSN',
+    description: 'Manage HSN codes and tax rates.',
+  },
 };
 
 const MODULE_META: Record<string, PageMeta> = {
@@ -113,6 +141,12 @@ const MODULE_META: Record<string, PageMeta> = {
   announcements: { title: 'Announcements', description: 'Company announcements and updates.' },
   shifts: { title: 'Shifts', description: 'Shift schedules and templates.' },
   notifications: { title: 'Notifications', description: 'Company announcements and updates.' },
+  'inventory-categories': { title: 'Categories', description: 'Product categories for inventory.' },
+  'inventory-units': { title: 'Units', description: 'Measurement units for inventory items.' },
+  'inventory-brands': { title: 'Brands', description: 'Product brands for inventory.' },
+  'inventory-warehouses': { title: 'Warehouses', description: 'Storage locations and warehouses.' },
+  'inventory-suppliers': { title: 'Suppliers', description: 'Vendors and suppliers.' },
+  'inventory-taxes': { title: 'Tax / HSN', description: 'HSN codes and tax rates.' },
 };
 
 export const resolvePageMeta = (pathname: string): PageMeta => {

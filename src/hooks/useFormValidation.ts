@@ -4,6 +4,7 @@ import {
   type FieldErrors,
   type ValidationSchema,
 } from '../shared/utils/validation';
+import { handleApiFormError } from '../shared/utils/apiError';
 
 export function useFormValidation<T extends object>() {
   const [errors, setErrors] = useState<FieldErrors<T>>({});
@@ -32,6 +33,12 @@ export function useFormValidation<T extends object>() {
     []
   );
 
+  const applyApiErrors = useCallback((error: unknown, fallback: string) => {
+    const message = handleApiFormError<T>(error, { setErrors, fallback });
+    setSubmitError(message);
+    return message;
+  }, []);
+
   return {
     errors,
     submitError,
@@ -40,5 +47,6 @@ export function useFormValidation<T extends object>() {
     clearFieldError,
     clearErrors,
     validateFields,
+    applyApiErrors,
   };
 }

@@ -6,6 +6,21 @@ import { UsersPage } from '../users/UsersPage';
 import { RolePermissionsPage } from '../role-permissions/RolePermissionsPage';
 import { LeavePage } from '../leave/LeavePage';
 import { AttendancePage } from '../attendance/AttendancePage';
+import { ProductsPage } from '../inventory-products/ProductsPage';
+import { StockInPage, StockOutPage } from '../stock-movements/StockMovementPage';
+import { CurrentStockPage } from '../inventory-stock/CurrentStockPage';
+import { StockLedgerPage } from '../inventory-stock/StockLedgerPage';
+import { StockAdjustmentPage } from '../inventory-stock/StockAdjustmentPage';
+import { WorkOrdersPage } from '../work-orders/WorkOrdersPage';
+import { MaterialIssuesPage } from '../material-issues/MaterialIssuesPage';
+import { ProductionEntriesPage } from '../production-entries/ProductionEntriesPage';
+import { PurchaseOrdersPage } from '../purchase/PurchaseOrdersPage';
+import { GRNsPage } from '../purchase/GRNsPage';
+import { PurchaseReturnsPage } from '../purchase/PurchaseReturnsPage';
+import { SalesOrdersPage } from '../sales/SalesOrdersPage';
+import { DeliveryChallansPage } from '../sales/DeliveryChallansPage';
+import { SalesInvoicesPage } from '../sales/SalesInvoicesPage';
+import { SalesReturnsPage } from '../sales/SalesReturnsPage';
 
 const ROLE_CODES = new Set(['roles', 'role']);
 const USER_CODES = new Set(['users', 'user']);
@@ -15,6 +30,22 @@ const DESIGNATION_CODES = new Set(['designations', 'designation']);
 const LEAVE_TYPE_CODES = new Set(['leave-types', 'leave-type', 'leave-types-master']);
 const LEAVE_CODES = new Set(['leave', 'leaves', 'leave-requests', 'leave-request']);
 const ATTENDANCE_CODES = new Set(['attendance', 'attendances']);
+const PRODUCT_CODES = new Set(['products', 'product', 'inventory-products', 'inventory-product']);
+const STOCK_IN_CODES = new Set(['stock-in', 'stockin', 'stock-inward', 'stock_in']);
+const STOCK_OUT_CODES = new Set(['stock-out', 'stockout', 'stock-outward', 'stock_out']);
+const CURRENT_STOCK_CODES = new Set(['current-stock', 'current_stock', 'currentstock']);
+const STOCK_LEDGER_CODES = new Set(['stock-ledger', 'stock_ledger', 'stockledger']);
+const STOCK_ADJUSTMENT_CODES = new Set(['stock-adjustment', 'stock_adjustment', 'stockadjustment']);
+const PURCHASE_ORDER_CODES = new Set(['purchase-orders', 'purchase-order', 'purchaseorders', 'po']);
+const GRN_CODES = new Set(['grns', 'grn', 'goods-receipt-notes', 'goods-receipt-note']);
+const PURCHASE_RETURN_CODES = new Set(['purchase-returns', 'purchase-return', 'purchasereturns']);
+const SALES_ORDER_CODES = new Set(['sales-orders', 'sales-order', 'salesorders', 'so']);
+const DELIVERY_CHALLAN_CODES = new Set(['delivery-challans', 'delivery-challan', 'deliverychallans', 'dc']);
+const SALES_INVOICE_CODES = new Set(['sales-invoices', 'sales-invoice', 'salesinvoices', 'invoices', 'invoice']);
+const SALES_RETURN_CODES = new Set(['sales-returns', 'sales-return', 'salesreturns']);
+const WORK_ORDER_CODES = new Set(['work-orders', 'work-order', 'workorders', 'workorder', 'wo']);
+const MATERIAL_ISSUE_CODES = new Set(['material-issues', 'material-issue', 'materialissues', 'materialissue', 'mi']);
+const PRODUCTION_ENTRY_CODES = new Set(['production-entries', 'production-entry', 'productionentries', 'productionentry', 'pe']);
 
 const SETTINGS_REDIRECTS: Record<string, string> = {
   departments: '/settings/departments',
@@ -28,6 +59,32 @@ const SETTINGS_REDIRECTS: Record<string, string> = {
   holiday: '/settings/holidays',
   announcements: '/settings/announcements',
   announcement: '/settings/announcements',
+  customers: '/settings/customers',
+  customer: '/settings/customers',
+  boms: '/settings/boms',
+  bom: '/settings/boms',
+  'inventory-categories': '/settings/inventory-categories',
+  'inventory-category': '/settings/inventory-categories',
+  categories: '/settings/inventory-categories',
+  'inventory-units': '/settings/inventory-units',
+  'inventory-unit': '/settings/inventory-units',
+  units: '/settings/inventory-units',
+  'inventory-brands': '/settings/inventory-brands',
+  'inventory-brand': '/settings/inventory-brands',
+  brands: '/settings/inventory-brands',
+  'inventory-warehouses': '/settings/inventory-warehouses',
+  'inventory-warehouse': '/settings/inventory-warehouses',
+  warehouses: '/settings/inventory-warehouses',
+  warehouse: '/settings/inventory-warehouses',
+  'inventory-suppliers': '/settings/inventory-suppliers',
+  'inventory-supplier': '/settings/inventory-suppliers',
+  suppliers: '/settings/inventory-suppliers',
+  supplier: '/settings/inventory-suppliers',
+  'inventory-taxes': '/settings/inventory-taxes',
+  'inventory-tax': '/settings/inventory-taxes',
+  taxes: '/settings/inventory-taxes',
+  tax: '/settings/inventory-taxes',
+  hsn: '/settings/inventory-taxes',
   shifts: '/settings/attendance',
   shift: '/settings/attendance',
 };
@@ -46,6 +103,22 @@ const resolvePage = (moduleCode?: string, itemCode?: string) => {
   if (LEAVE_TYPE_CODES.has(primary)) return <Navigate to="/settings/leave-types" replace />;
   if (LEAVE_CODES.has(primary)) return <LeavePage />;
   if (ATTENDANCE_CODES.has(primary)) return <AttendancePage />;
+  if (PRODUCT_CODES.has(primary)) return <ProductsPage />;
+  if (STOCK_IN_CODES.has(primary)) return <StockInPage />;
+  if (STOCK_OUT_CODES.has(primary)) return <StockOutPage />;
+  if (CURRENT_STOCK_CODES.has(primary)) return <CurrentStockPage />;
+  if (STOCK_LEDGER_CODES.has(primary)) return <StockLedgerPage />;
+  if (STOCK_ADJUSTMENT_CODES.has(primary)) return <StockAdjustmentPage />;
+  if (PURCHASE_ORDER_CODES.has(primary)) return <PurchaseOrdersPage />;
+  if (GRN_CODES.has(primary)) return <GRNsPage />;
+  if (PURCHASE_RETURN_CODES.has(primary)) return <PurchaseReturnsPage />;
+  if (SALES_ORDER_CODES.has(primary)) return <SalesOrdersPage />;
+  if (DELIVERY_CHALLAN_CODES.has(primary)) return <DeliveryChallansPage />;
+  if (SALES_INVOICE_CODES.has(primary)) return <SalesInvoicesPage />;
+  if (SALES_RETURN_CODES.has(primary)) return <SalesReturnsPage />;
+  if (WORK_ORDER_CODES.has(primary)) return <WorkOrdersPage />;
+  if (MATERIAL_ISSUE_CODES.has(primary)) return <MaterialIssuesPage />;
+  if (PRODUCTION_ENTRY_CODES.has(primary)) return <ProductionEntriesPage />;
   return null;
 };
 

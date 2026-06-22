@@ -348,12 +348,8 @@ export const createMasterPage = (config: MasterPageConfig) => {
 
     if (config.embedded) {
       return (
-        <div className="overflow-hidden rounded-sm border border-base bg-surface shadow-sm">
-          <div className="border-b border-base px-6 py-4">
-            <h2 className="text-lg font-semibold text-body">{config.title}</h2>
-            <p className="mt-1 text-sm text-muted">{config.subtitle}</p>
-          </div>
-          <div className="p-6">{content}</div>
+        <div className="overflow-hidden rounded-sm border border-base bg-surface p-6 shadow-sm">
+          {content}
         </div>
       );
     }

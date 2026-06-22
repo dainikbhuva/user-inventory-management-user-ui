@@ -6,7 +6,6 @@ import { StatusToggle } from '../../../components/common/StatusToggle';
 import { useFormValidation } from '../../../hooks/useFormValidation';
 import { rules, type ValidationSchema } from '../../../shared/utils/validation';
 import { toast } from '../../../shared/utils/toast';
-import { getApiErrorMessage } from '../../../shared/utils/apiError';
 
 export interface MasterRecordFormData {
   name: string;
@@ -60,7 +59,7 @@ export const MasterRecordForm = ({
 }: MasterRecordFormProps) => {
   const [form, setForm] = useState<MasterRecordFormData>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { errors, clearFieldError, clearErrors, validateFields } =
+  const { errors, clearFieldError, clearErrors, validateFields, applyApiErrors } =
     useFormValidation<MasterRecordFormData>();
 
   useEffect(() => {
@@ -78,7 +77,7 @@ export const MasterRecordForm = ({
       await onSubmit(form);
       clearErrors();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to save record'));
+      toast.error(applyApiErrors(err, 'Failed to save record'));
     } finally {
       setIsSubmitting(false);
     }

@@ -10,6 +10,8 @@ import { departmentService, designationService } from '../../../services/master.
 import type { PortalRole, PortalUserRecord, PortalMasterRecord } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import { useFormValidation } from '../../../hooks/useFormValidation';
+import { getUserValidationSchema } from '../../../shared/validation/user.validation';
 import { shiftService } from '../../../services/shift.service';
 import type { PortalShiftRecord } from '../../../shared/types/shift.types';
 import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
@@ -51,6 +53,8 @@ export const UserCreatePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [autoEmployeeCode, setAutoEmployeeCode] = useState(false);
+  const { errors, clearFieldError, clearErrors, validateFields, applyApiErrors } =
+    useFormValidation<UserFormValues>();
 
   useEffect(() => {
     roleService
@@ -98,14 +102,10 @@ export const UserCreatePage = () => {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    clearErrors();
 
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.roleId) {
-      toast.warning('Please fill all required fields.');
-      return;
-    }
-
-    if (!autoEmployeeCode && !form.employeeCode.trim()) {
-      toast.warning('Enter employee code or click Auto Generate.');
+    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: !autoEmployeeCode }))) {
+      toast.warning('Please fix the highlighted fields.');
       return;
     }
 
@@ -142,7 +142,7 @@ export const UserCreatePage = () => {
       }
       navigate(listPath);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to create user'));
+      toast.error(applyApiErrors(err, 'Failed to create user'));
     } finally {
       setIsSubmitting(false);
     }
@@ -161,6 +161,7 @@ export const UserCreatePage = () => {
       <UserForm
         mode="create"
         value={form}
+        errors={errors}
         roles={roles}
         departments={departments}
         designations={designations}
@@ -174,6 +175,7 @@ export const UserCreatePage = () => {
         autoEmployeeCode={autoEmployeeCode}
         isGeneratingCode={isGeneratingCode}
         onChange={setForm}
+        onClearFieldError={clearFieldError}
         onAutoGenerateCode={handleAutoGenerateCode}
         onEmployeeCodeManualChange={() => setAutoEmployeeCode(false)}
         onCancel={() => navigate(listPath)}

@@ -10,6 +10,8 @@ import { departmentService, designationService } from '../../../services/master.
 import type { PortalRole, PortalUserRecord, PortalMasterRecord, UserGender } from '../../../shared/types/portal.types';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
+import { useFormValidation } from '../../../hooks/useFormValidation';
+import { getUserValidationSchema } from '../../../shared/validation/user.validation';
 import { shiftService } from '../../../services/shift.service';
 import type { PortalShiftRecord } from '../../../shared/types/shift.types';
 import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
@@ -33,6 +35,8 @@ export const UserEditPage = () => {
   const [form, setForm] = useState<UserFormValues | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { errors, clearFieldError, clearErrors, validateFields, applyApiErrors } =
+    useFormValidation<UserFormValues>();
 
   useEffect(() => {
     if (!userId) return;
@@ -83,6 +87,12 @@ export const UserEditPage = () => {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!userId || !form) return;
+    clearErrors();
+
+    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: false }))) {
+      toast.warning('Please fix the highlighted fields.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -106,7 +116,7 @@ export const UserEditPage = () => {
       toast.success('User updated successfully.');
       navigate(listPath);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to update user'));
+      toast.error(applyApiErrors(err, 'Failed to update user'));
     } finally {
       setIsSubmitting(false);
     }
@@ -133,6 +143,7 @@ export const UserEditPage = () => {
       <UserForm
         mode="edit"
         value={form}
+        errors={errors}
         roles={roles}
         departments={departments}
         designations={designations}
@@ -141,6 +152,7 @@ export const UserEditPage = () => {
         excludeManagerId={userId}
         isSubmitting={isSubmitting}
         onChange={setForm}
+        onClearFieldError={clearFieldError}
         onCancel={() => navigate(listPath)}
         onSubmit={handleSubmit}
         submitLabel="Update user"
