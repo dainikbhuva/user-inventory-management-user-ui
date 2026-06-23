@@ -12,6 +12,8 @@ import { ManufacturingStatusBadge } from '../manufacturing/ManufacturingStatusBa
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
+import { DocumentViewPreview } from '../../../components/documents/DocumentPreviewActions';
+import { buildMaterialIssuePrintData } from '../../../shared/utils/documentPrintBuilders';
 
 const LIST_PATH = '/manufacturing/material-issues';
 const PERM = PORTAL_PERMISSION_MODULES.materialIssues;
@@ -69,6 +71,7 @@ export const MaterialIssueViewPage = () => {
           <Button type="button" variant="secondary" onClick={() => navigate(LIST_PATH)}>
             <ArrowLeft className="mr-2 inline h-4 w-4" /> Back
           </Button>
+          <DocumentViewPreview item={item} build={buildMaterialIssuePrintData} />
           {item && canEdit && item.status === 'draft' ? (
             <>
               <Button type="button" variant="secondary" onClick={() => navigate(`${LIST_PATH}/${id}/edit`)}>

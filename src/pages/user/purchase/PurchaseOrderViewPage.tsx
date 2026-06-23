@@ -12,6 +12,8 @@ import { TradingStatusBadge } from '../trading/TradingStatusBadge';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { ModulePermissionGuard } from '../../../components/common/ModulePermissionGuard';
+import { DocumentViewPreview } from '../../../components/documents/DocumentPreviewActions';
+import { buildPurchaseOrderPrintData } from '../../../shared/utils/documentPrintBuilders';
 
 const LIST_PATH = '/purchase/purchase-orders';
 const PERM = PORTAL_PERMISSION_MODULES.purchaseOrders;
@@ -91,6 +93,7 @@ export const PurchaseOrderViewPage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />
             Back
           </Button>
+          <DocumentViewPreview item={item} build={buildPurchaseOrderPrintData} />
           {item && canEdit && item.status === 'draft' ? (
             <>
               <Button

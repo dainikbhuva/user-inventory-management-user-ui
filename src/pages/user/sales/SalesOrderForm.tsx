@@ -87,7 +87,7 @@ export const formValuesToSalesOrderPayload = (v: SalesOrderFormValues, opts?: { 
   lines: v.lines.map((l) => ({
     productId: l.productId,
     quantity: parseFloat(l.quantity) || 0,
-    unitPrice: parseFloat(l.unitPrice) || 0,
+    unitPrice: parseFloat(l.unitPrice || l.unitCost || '0') || 0,
     taxId: l.taxId || undefined,
     notes: l.notes.trim() || undefined,
   })),

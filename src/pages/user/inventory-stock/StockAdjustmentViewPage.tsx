@@ -4,6 +4,8 @@ import { ArrowLeft, Ban, CheckCircle2, Pencil } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
 import { Button } from '../../../components/ui/Button';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
+import { DocumentViewPreview } from '../../../components/documents/DocumentPreviewActions';
+import { buildStockAdjustmentPrintData } from '../../../shared/utils/documentPrintBuilders';
 import { inventoryStockService } from '../../../services/inventoryStock.service';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
@@ -109,6 +111,7 @@ export const StockAdjustmentViewPage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />
             Back to list
           </Button>
+          <DocumentViewPreview item={item} build={buildStockAdjustmentPrintData} />
           {canEdit && item.status === 'draft' ? (
             <Button type="button" variant="secondary" onClick={() => navigate(`${LIST_PATH}/${id}/edit`)}>
               <Pencil className="mr-2 inline h-4 w-4" />

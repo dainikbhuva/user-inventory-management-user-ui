@@ -8,6 +8,10 @@ import { Select } from '../../../components/ui/Select';
 import type { TradingLineFormValues } from '../../../shared/types/trading.types';
 import type { InventoryProductRecord } from '../../../shared/types/inventoryProduct.types';
 import type { InventoryTaxRecord } from '../../../shared/types/inventoryMaster.types';
+import {
+  computeTradingDocumentTotals,
+  computeTradingLineAmounts,
+} from '../../../shared/utils/tradingCalculations';
 
 interface TradingLinesEditorProps {
   lines: TradingLineFormValues[];
@@ -35,6 +39,8 @@ const emptyLine = (): TradingLineFormValues => ({
   notes: '',
 });
 
+const formatCurrency = (amount: number) => `₹${amount.toFixed(2)}`;
+
 export const TradingLinesEditor = ({
   lines,
   products,
@@ -43,24 +49,103 @@ export const TradingLinesEditor = ({
   onChange,
   readOnly = false,
 }: TradingLinesEditorProps) => {
-  const setLine = (index: number, field: keyof TradingLineFormValues, value: string) => {
-    const updated = lines.map((line, i) =>
-      i === index ? { ...line, [field]: value } : line
-    );
-    onChange(updated);
+  const updateLine = (index: number, patch: Partial<TradingLineFormValues>) => {
+    onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   };
 
   const addLine = () => onChange([...lines, showReason ? { ...emptyLine(), reason: '' } : emptyLine()]);
   const removeLine = (index: number) => onChange(lines.filter((_, i) => i !== index));
 
-  const getLineTotal = (line: TradingLineFormValues): string => {
-    const qty = parseFloat(line.quantity) || 0;
-    const price = parseFloat(line.unitPrice || line.unitCost || '0') || 0;
-    if (qty <= 0 || price <= 0) return '—';
-    return `₹${(qty * price).toFixed(2)}`;
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const taxMap = new Map(taxes.map((t) => [t.id, t]));
+
+  const applyProductToLine = (line: TradingLineFormValues, productId: string): TradingLineFormValues => {
+    if (!productId) {
+      return {
+        ...line,
+        productId: '',
+        productName: undefined,
+        productCode: undefined,
+        taxId: '',
+        taxRate: undefined,
+      };
+    }
+    const prod = productMap.get(productId);
+    if (!prod) return { ...line, productId };
+    const taxId = prod.tax?.id ?? '';
+    const taxRate = taxId ? (prod.tax?.taxRate ?? taxMap.get(taxId)?.taxRate) : undefined;
+    return {
+      ...line,
+      productId,
+      productName: prod.productName,
+      productCode: prod.productCode,
+      unitPrice: String(prod.salePrice ?? ''),
+      unitCost: String(prod.purchasePrice ?? ''),
+      taxId,
+      taxRate,
+    };
   };
 
-  const productMap = new Map(products.map((p) => [p.id, p]));
+  const applyTaxToLine = (line: TradingLineFormValues, taxId: string): TradingLineFormValues => {
+    const tax = taxMap.get(taxId);
+    return {
+      ...line,
+      taxId,
+      taxRate: tax?.taxRate,
+    };
+  };
+
+  const getLineTotal = (line: TradingLineFormValues): string => {
+    const { qty, price, base } = computeTradingLineAmounts(line, taxes);
+    if (qty <= 0 || price <= 0) return '—';
+    return formatCurrency(base);
+  };
+
+  const docTotals = computeTradingDocumentTotals(lines, taxes);
+  const labelColSpan = showReason ? 8 : 7;
+  const showTaxBreakdown = taxes.length > 0 && !showReason;
+
+  const totalsSummary = showTaxBreakdown ? (
+    <>
+      <tr className="border-t border-base bg-surface-2">
+        <td colSpan={labelColSpan} className="px-3 py-2 text-right text-sm font-medium text-muted">
+          Subtotal
+        </td>
+        <td className="px-3 py-2.5 text-right tabular-nums font-medium text-body">
+          {formatCurrency(docTotals.subtotal)}
+        </td>
+        {!readOnly ? <td /> : null}
+      </tr>
+      <tr className="bg-surface-2">
+        <td colSpan={labelColSpan} className="px-3 py-2 text-right text-sm font-medium text-muted">
+          Tax
+        </td>
+        <td className="px-3 py-2.5 text-right tabular-nums font-medium text-body">
+          {formatCurrency(docTotals.taxAmount)}
+        </td>
+        {!readOnly ? <td /> : null}
+      </tr>
+      <tr className="bg-surface-2">
+        <td colSpan={labelColSpan} className="px-3 py-2 text-right text-sm font-semibold text-muted">
+          Grand Total
+        </td>
+        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-body">
+          {formatCurrency(docTotals.totalAmount)}
+        </td>
+        {!readOnly ? <td /> : null}
+      </tr>
+    </>
+  ) : (
+    <tr className="border-t border-base bg-surface-2">
+      <td colSpan={labelColSpan} className="px-3 py-2.5 text-right text-sm font-medium text-muted">
+        Total
+      </td>
+      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-body">
+        {formatCurrency(docTotals.subtotal)}
+      </td>
+      {!readOnly ? <td /> : null}
+    </tr>
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,7 +161,7 @@ export const TradingLinesEditor = ({
               <th className="px-3 py-2.5 text-left font-medium text-muted w-36">Tax</th>
               {showReason ? <th className="px-3 py-2.5 text-left font-medium text-muted w-24">Reason</th> : null}
               <th className="px-3 py-2.5 text-left font-medium text-muted w-24">Notes</th>
-              <th className="px-3 py-2.5 text-right font-medium text-muted w-24">Total</th>
+              <th className="px-3 py-2.5 text-right font-medium text-muted w-24">Amount</th>
               {!readOnly ? <th className="w-10" /> : null}
             </tr>
           </thead>
@@ -88,19 +173,7 @@ export const TradingLinesEditor = ({
                   <Select
                     value={line.productId}
                     disabled={readOnly}
-                    onChange={(e) => {
-                      const prod = productMap.get(e.target.value);
-                      const updated = {
-                        ...line,
-                        productId: e.target.value,
-                        productName: prod?.productName,
-                        productCode: prod?.productCode,
-                        unitPrice: prod ? String(prod.salePrice ?? '') : line.unitPrice,
-                        unitCost: prod ? String(prod.purchasePrice ?? '') : line.unitCost,
-                        taxId: prod?.tax?.id ?? line.taxId,
-                      };
-                      onChange(lines.map((l, i) => (i === index ? updated : l)));
-                    }}
+                    onChange={(e) => updateLine(index, applyProductToLine(line, e.target.value))}
                   >
                     <option value="">— Select product —</option>
                     {products.map((p) => (
@@ -118,7 +191,7 @@ export const TradingLinesEditor = ({
                     value={line.quantity}
                     placeholder="0"
                     disabled={readOnly}
-                    onChange={(e) => setLine(index, 'quantity', e.target.value)}
+                    onChange={(e) => updateLine(index, { quantity: e.target.value })}
                   />
                 </td>
                 <td className="px-3 py-2.5">
@@ -129,17 +202,16 @@ export const TradingLinesEditor = ({
                     value={line.unitPrice ?? line.unitCost ?? ''}
                     placeholder="0.00"
                     disabled={readOnly}
-                    onChange={(e) => {
-                      setLine(index, 'unitPrice', e.target.value);
-                      setLine(index, 'unitCost', e.target.value);
-                    }}
+                    onChange={(e) =>
+                      updateLine(index, { unitPrice: e.target.value, unitCost: e.target.value })
+                    }
                   />
                 </td>
                 <td className="px-3 py-2.5">
                   <Select
                     value={line.taxId}
                     disabled={readOnly}
-                    onChange={(e) => setLine(index, 'taxId', e.target.value)}
+                    onChange={(e) => updateLine(index, applyTaxToLine(line, e.target.value))}
                   >
                     <option value="">None</option>
                     {taxes.map((t) => (
@@ -154,7 +226,7 @@ export const TradingLinesEditor = ({
                     <Select
                       value={line.reason ?? ''}
                       disabled={readOnly}
-                      onChange={(e) => setLine(index, 'reason', e.target.value)}
+                      onChange={(e) => updateLine(index, { reason: e.target.value })}
                     >
                       <option value="">— Select —</option>
                       {RETURN_REASONS.map((r) => (
@@ -168,7 +240,7 @@ export const TradingLinesEditor = ({
                     value={line.notes}
                     placeholder="Optional"
                     disabled={readOnly}
-                    onChange={(e) => setLine(index, 'notes', e.target.value)}
+                    onChange={(e) => updateLine(index, { notes: e.target.value })}
                   />
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-medium text-body">
@@ -195,25 +267,7 @@ export const TradingLinesEditor = ({
               </tr>
             ) : null}
           </tbody>
-          {lines.length > 0 ? (
-            <tfoot>
-              <tr className="border-t border-base bg-surface-2">
-                <td colSpan={showReason ? 8 : 7} className="px-3 py-2.5 text-right text-sm font-medium text-muted">
-                  Total
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-body">
-                  {`₹${lines
-                    .reduce((sum, line) => {
-                      const qty = parseFloat(line.quantity) || 0;
-                      const price = parseFloat(line.unitPrice || line.unitCost || '0') || 0;
-                      return sum + qty * price;
-                    }, 0)
-                    .toFixed(2)}`}
-                </td>
-                {!readOnly ? <td /> : null}
-              </tr>
-            </tfoot>
-          ) : null}
+          {lines.length > 0 ? <tfoot>{totalsSummary}</tfoot> : null}
         </table>
       </div>
 
@@ -239,24 +293,7 @@ export const TradingLinesEditor = ({
                 <Select
                   value={line.productId}
                   disabled={readOnly}
-                  onChange={(e) => {
-                      const prod = productMap.get(e.target.value);
-                      onChange(
-                        lines.map((l, i) =>
-                          i === index
-                            ? {
-                                ...l,
-                                productId: e.target.value,
-                                productName: prod?.productName,
-                                productCode: prod?.productCode,
-                                unitPrice: prod ? String(prod.salePrice ?? '') : l.unitPrice,
-                                unitCost: prod ? String(prod.purchasePrice ?? '') : l.unitCost,
-                                taxId: prod?.tax?.id ?? l.taxId,
-                              }
-                            : l
-                        )
-                      );
-                  }}
+                  onChange={(e) => updateLine(index, applyProductToLine(line, e.target.value))}
                 >
                   <option value="">— Select product —</option>
                   {products.map((p) => (
@@ -275,7 +312,7 @@ export const TradingLinesEditor = ({
                   value={line.quantity}
                   placeholder="0"
                   disabled={readOnly}
-                  onChange={(e) => setLine(index, 'quantity', e.target.value)}
+                  onChange={(e) => updateLine(index, { quantity: e.target.value })}
                 />
               </div>
               <div>
@@ -287,10 +324,9 @@ export const TradingLinesEditor = ({
                   value={line.unitPrice ?? line.unitCost ?? ''}
                   placeholder="0.00"
                   disabled={readOnly}
-                  onChange={(e) => {
-                    setLine(index, 'unitPrice', e.target.value);
-                    setLine(index, 'unitCost', e.target.value);
-                  }}
+                  onChange={(e) =>
+                    updateLine(index, { unitPrice: e.target.value, unitCost: e.target.value })
+                  }
                 />
               </div>
               <div>
@@ -298,7 +334,7 @@ export const TradingLinesEditor = ({
                 <Select
                   value={line.taxId}
                   disabled={readOnly}
-                  onChange={(e) => setLine(index, 'taxId', e.target.value)}
+                  onChange={(e) => updateLine(index, applyTaxToLine(line, e.target.value))}
                 >
                   <option value="">None</option>
                   {taxes.map((t) => (
@@ -314,7 +350,7 @@ export const TradingLinesEditor = ({
                   <Select
                     value={line.reason ?? ''}
                     disabled={readOnly}
-                    onChange={(e) => setLine(index, 'reason', e.target.value)}
+                    onChange={(e) => updateLine(index, { reason: e.target.value })}
                   >
                     <option value="">— Select —</option>
                     {RETURN_REASONS.map((r) => (
@@ -324,7 +360,7 @@ export const TradingLinesEditor = ({
                 </div>
               ) : null}
               <div className="flex items-center justify-between sm:col-span-2">
-                <span className="text-xs text-muted">Total</span>
+                <span className="text-xs text-muted">Amount</span>
                 <span className="font-semibold text-body">{getLineTotal(line)}</span>
               </div>
             </div>
@@ -333,6 +369,29 @@ export const TradingLinesEditor = ({
         {lines.length === 0 ? (
           <div className="rounded-sm border border-dashed border-base py-8 text-center text-sm text-muted">
             No items added yet.
+          </div>
+        ) : null}
+        {lines.length > 0 && showTaxBreakdown ? (
+          <div className="rounded-sm border border-base bg-surface-2 p-4 text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-muted">Subtotal</span>
+              <span className="tabular-nums font-medium">{formatCurrency(docTotals.subtotal)}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-muted">Tax</span>
+              <span className="tabular-nums font-medium">{formatCurrency(docTotals.taxAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t border-base pt-2">
+              <span className="font-semibold text-body">Grand Total</span>
+              <span className="tabular-nums font-semibold text-body">
+                {formatCurrency(docTotals.totalAmount)}
+              </span>
+            </div>
+          </div>
+        ) : lines.length > 0 ? (
+          <div className="flex justify-between rounded-sm border border-base bg-surface-2 p-4 text-sm font-semibold">
+            <span>Total</span>
+            <span className="tabular-nums">{formatCurrency(docTotals.subtotal)}</span>
           </div>
         ) : null}
       </div>

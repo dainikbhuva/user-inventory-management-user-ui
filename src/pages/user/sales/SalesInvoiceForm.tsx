@@ -77,6 +77,7 @@ export const salesInvoiceToFormValues = (record: SalesInvoiceRecord): SalesInvoi
     quantity: String(l.quantity),
     unitPrice: String(l.unitPrice),
     taxId: l.taxId ?? '',
+    taxRate: l.taxRate,
     notes: l.notes ?? '',
   })),
 });
@@ -95,7 +96,7 @@ export const formValuesToSalesInvoicePayload = (v: SalesInvoiceFormValues, opts?
   lines: v.lines.map((l) => ({
     productId: l.productId,
     quantity: parseFloat(l.quantity) || 0,
-    unitPrice: parseFloat(l.unitPrice) || 0,
+    unitPrice: parseFloat(l.unitPrice || l.unitCost || '0') || 0,
     taxId: l.taxId || undefined,
     notes: l.notes.trim() || undefined,
   })),

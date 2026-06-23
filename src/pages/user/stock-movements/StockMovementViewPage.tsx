@@ -12,6 +12,8 @@ import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermi
 import type { StockMovementRecord, StockMovementType } from '../../../shared/types/inventoryProduct.types';
 import { StockMovementStatusBadge } from './StockMovementStatusBadge';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
+import { DocumentViewPreview } from '../../../components/documents/DocumentPreviewActions';
+import { buildStockMovementPrintData } from '../../../shared/utils/documentPrintBuilders';
 
 const configFor = (movementType: StockMovementType) => {
   if (movementType === 'in') {
@@ -118,6 +120,7 @@ export const StockMovementViewPage = ({ movementType }: { movementType: StockMov
             <ArrowLeft className="mr-2 inline h-4 w-4" />
             Back to list
           </Button>
+          <DocumentViewPreview item={item} build={buildStockMovementPrintData} />
           {canEdit && item.status === 'draft' ? (
             <Button type="button" variant="secondary" onClick={() => navigate(config.editPath(id!))}>
               <Pencil className="mr-2 inline h-4 w-4" />
