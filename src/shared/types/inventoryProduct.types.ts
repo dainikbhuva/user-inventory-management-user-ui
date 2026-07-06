@@ -1,5 +1,7 @@
 export type ProductType = 'trading' | 'raw_material' | 'semi_finished' | 'finished_goods';
 
+export type InventoryProductStockLevel = 'in_stock' | 'low_stock' | 'out_of_stock';
+
 export const PRODUCT_TYPE_OPTIONS: { value: ProductType; label: string; hint: string }[] = [
   { value: 'trading', label: 'Trading', hint: 'Buy and sell only (purchase/sales)' },
   { value: 'raw_material', label: 'Raw Material', hint: 'Used as BOM component / material issue' },

@@ -19,6 +19,14 @@ export interface VerifyPaymentPayload {
   razorpay_signature: string
 }
 
+export interface PaymentHistoryRecord {
+  _id: string
+  amount: number
+  status: string
+  createdAt: string
+  planId?: { name?: string }
+}
+
 export const paymentService = {
   async checkout(payload: {
     action: 'upgrade' | 'renew'
@@ -35,7 +43,7 @@ export const paymentService = {
     return response.data
   },
 
-  async getHistory(): Promise<ApiResponse<unknown[]>> {
+  async getHistory(): Promise<ApiResponse<PaymentHistoryRecord[]>> {
     const response = await axiosClient.get(API_ENDPOINTS.PAYMENTS.HISTORY)
     return response.data
   },

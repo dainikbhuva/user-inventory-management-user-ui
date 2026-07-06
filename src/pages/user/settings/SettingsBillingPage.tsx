@@ -9,7 +9,7 @@ import {
   type PortalPlanSummary,
   type PortalSubscriptionQuote,
 } from '../../../services/subscription.service';
-import { paymentService } from '../../../services/payment.service';
+import { paymentService, type PaymentHistoryRecord } from '../../../services/payment.service';
 import { loadRazorpayScript, openRazorpayCheckout } from '../../../shared/utils/razorpay';
 import {
   computeBillingPeriodTotal,
@@ -43,9 +43,7 @@ export const SettingsBillingPage = () => {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [mode, setMode] = useState<'upgrade' | 'renew'>('upgrade');
-  const [paymentHistory, setPaymentHistory] = useState<
-    Array<{ _id: string; amount: number; status: string; createdAt: string; planId?: { name?: string } }>
-  >([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);

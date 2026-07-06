@@ -61,8 +61,8 @@ const warehouseConfig = {
     },
   ],
   exportExtraColumns: [
-    { header: 'Address', getValue: (row) => row.address ?? '' },
-    { header: 'Sort', getValue: (row) => row.sortOrder ?? 0 },
+    { header: 'Address', getValue: (row: InventoryWarehouseRecord) => row.address ?? '' },
+    { header: 'Sort', getValue: (row: InventoryWarehouseRecord) => row.sortOrder ?? 0 },
   ],
 };
 

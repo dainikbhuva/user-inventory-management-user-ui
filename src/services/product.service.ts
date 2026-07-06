@@ -1,7 +1,7 @@
 import axiosClient from './api/axiosClient';
 import { API_ENDPOINTS } from './api/endpoints';
 import type { ApiResponse } from '../shared/types/api.types';
-import type { InventoryProductRecord } from '../shared/types/inventoryProduct.types';
+import type { InventoryProductRecord, ProductType } from '../shared/types/inventoryProduct.types';
 
 export type ProductPayload = {
   productCode?: string;
