@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Printer, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import type { PrintDocumentData } from '../../shared/types/documentPrint.types';
+import { formatPrintDocumentTitle } from '../../shared/utils/documentPrintFormat';
 import { DocumentPrintSheet } from './DocumentPrintSheet';
 
 interface DocumentPrintPreviewProps {
@@ -33,6 +34,7 @@ const buildPrintDocumentHtml = (title: string, bodyHtml: string) => `<!DOCTYPE h
 
 export const DocumentPrintPreview = ({ open, data, onClose }: DocumentPrintPreviewProps) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const printTitle = formatPrintDocumentTitle(data.documentTitle, data.documentNumber);
 
   useEffect(() => {
     if (!open) return;
@@ -42,6 +44,15 @@ export const DocumentPrintPreview = ({ open, data, onClose }: DocumentPrintPrevi
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousTitle = document.title;
+    document.title = printTitle;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [open, printTitle]);
 
   const handlePrint = () => {
     const sheet = printRef.current;
@@ -59,15 +70,17 @@ export const DocumentPrintPreview = ({ open, data, onClose }: DocumentPrintPrevi
       return;
     }
 
-    const title = `${data.documentTitle} - ${data.documentNumber}`;
+    document.title = printTitle;
     frameDoc.open();
-    frameDoc.write(buildPrintDocumentHtml(title, sheet.innerHTML));
+    frameDoc.write(buildPrintDocumentHtml(printTitle, sheet.innerHTML));
     frameDoc.close();
 
     const runPrint = () => {
       frameWindow.focus();
       frameWindow.print();
-      window.setTimeout(() => iframe.remove(), 1000);
+      const cleanup = () => iframe.remove();
+      frameWindow.addEventListener('afterprint', cleanup, { once: true });
+      window.setTimeout(cleanup, 60_000);
     };
 
     if (frameDoc.readyState === 'complete') {
@@ -84,8 +97,8 @@ export const DocumentPrintPreview = ({ open, data, onClose }: DocumentPrintPrevi
       <div className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-sm border border-base bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-base px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-body">Document Preview</h2>
-            <p className="text-sm text-muted">A4 size preview — use Print to send to printer or save as PDF</p>
+            <h2 className="text-lg font-semibold text-body">{printTitle}</h2>
+            <p className="text-sm text-muted">A4 preview — Print to send to printer or save as PDF</p>
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="default" onClick={handlePrint}>

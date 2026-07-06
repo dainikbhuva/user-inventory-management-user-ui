@@ -1,4 +1,11 @@
-export type InventoryProductStockLevel = 'in_stock' | 'low_stock' | 'out_of_stock';
+export type ProductType = 'trading' | 'raw_material' | 'semi_finished' | 'finished_goods';
+
+export const PRODUCT_TYPE_OPTIONS: { value: ProductType; label: string; hint: string }[] = [
+  { value: 'trading', label: 'Trading', hint: 'Buy and sell only (purchase/sales)' },
+  { value: 'raw_material', label: 'Raw Material', hint: 'Used as BOM component / material issue' },
+  { value: 'semi_finished', label: 'Semi Finished', hint: 'Can be produced and also used in other BOMs' },
+  { value: 'finished_goods', label: 'Finished Goods', hint: 'Final product — appears in BOM finished product list' },
+];
 
 export interface InventoryProductRef {
   id: string;
@@ -23,7 +30,7 @@ export interface InventoryProductRecord {
   quantityOnHand: number;
   stockLevel: InventoryProductStockLevel;
   barcode?: string;
-  productType?: 'trading' | 'raw_material' | 'semi_finished' | 'finished_goods';
+  productType?: ProductType;
   status: 'active' | 'inactive';
   createdAt?: string;
   updatedAt?: string;
@@ -43,6 +50,7 @@ export interface ProductFormValues {
   minStock: string;
   maxStock: string;
   barcode: string;
+  productType: ProductType;
   status: 'active' | 'inactive';
 }
 

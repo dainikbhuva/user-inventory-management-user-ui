@@ -134,6 +134,15 @@ export const expandPermissionBases = (moduleCode: string, itemCode?: string): st
   return Array.from(bases);
 };
 
+/** Module-direct rows (e.g. leave/leave) may sync the bare module code; dropdown items may not. */
+const isModuleDirectPermissionBase = (moduleCode: string, itemCode: string): boolean => {
+  if (itemCode === moduleCode) return true;
+  if (itemCode.endsWith('s') && itemCode.slice(0, -1) === moduleCode) return true;
+  if (`${itemCode}s` === moduleCode) return true;
+  if (moduleCode.endsWith('s') && moduleCode.slice(0, -1) === itemCode) return true;
+  return false;
+};
+
 /** All permission base keys equivalent to the given menu/API base. */
 export const getPermissionAliasBases = (base: string): string[] => {
   const slash = base.indexOf('/');
@@ -143,6 +152,22 @@ export const getPermissionAliasBases = (base: string): string[] => {
     return Array.from(bases);
   }
   return expandPermissionBases(base.slice(0, slash), base.slice(slash + 1));
+};
+
+/**
+ * Alias bases used when editing the matrix. Omits the bare parent module code for
+ * dropdown items so toggling one child (e.g. Leave) does not enable siblings.
+ */
+export const getWritablePermissionAliasBases = (base: string): string[] => {
+  const aliases = getPermissionAliasBases(base);
+  const slash = base.indexOf('/');
+  if (slash === -1) return aliases;
+
+  const moduleCode = base.slice(0, slash);
+  const itemCode = base.slice(slash + 1);
+  if (isModuleDirectPermissionBase(moduleCode, itemCode)) return aliases;
+
+  return aliases.filter((alias) => alias !== moduleCode);
 };
 
 export const isActionEnabledForBase = (
@@ -157,10 +182,36 @@ export const setMatrixActionForBase = (
   action: PermissionAction,
   enabled: boolean
 ): PermissionMatrix =>
-  getPermissionAliasBases(base).reduce(
+  getWritablePermissionAliasBases(base).reduce(
     (next, alias) => setMatrixAction(next, alias, action, enabled),
     matrix
   );
+
+export const setMatrixActionForBases = (
+  matrix: PermissionMatrix,
+  bases: string[],
+  action: PermissionAction,
+  enabled: boolean
+): PermissionMatrix =>
+  bases.reduce((next, base) => {
+    let updated = next;
+    if (action !== 'view' && enabled && !isActionEnabledForBase(updated, base, 'view')) {
+      updated = setMatrixActionForBase(updated, base, 'view', true);
+    }
+    return setMatrixActionForBase(updated, base, action, enabled);
+  }, matrix);
+
+export const areAllBasesActionEnabled = (
+  matrix: PermissionMatrix,
+  bases: string[],
+  action: PermissionAction
+): boolean => bases.length > 0 && bases.every((base) => isActionEnabledForBase(matrix, base, action));
+
+export const areSomeBasesActionEnabled = (
+  matrix: PermissionMatrix,
+  bases: string[],
+  action: PermissionAction
+): boolean => bases.some((base) => isActionEnabledForBase(matrix, base, action));
 
 /** Collapse alias keys onto the sidebar permission keys shown in the UI. */
 export const normalizeMatrixToBases = (

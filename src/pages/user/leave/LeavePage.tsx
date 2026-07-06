@@ -69,6 +69,7 @@ export const LeavePage = () => {
   const [editing, setEditing] = useState<PortalLeaveRequestRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PortalLeaveRequestRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   const myLeaves = useMemo(
     () => items.filter((item) => item.user.id === user?.id),
@@ -92,6 +93,13 @@ export const LeavePage = () => {
     defaultSortBy: 'startDate',
   });
 
+  const refreshLeaves = useCallback(async () => {
+    const leaveResult = await leaveService.getAll();
+    setItems(leaveResult.items);
+    setMeta(leaveResult.meta);
+    return leaveResult;
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -111,6 +119,28 @@ export const LeavePage = () => {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const reviewSuccessMessage = (
+    updated: PortalLeaveRequestRecord,
+    status: 'approved' | 'rejected'
+  ) => {
+    if (status === 'rejected') return 'Leave request rejected.';
+    if (updated.status === 'approved') return 'Leave request approved.';
+    if (updated.approvalStage === 'hr') {
+      return 'Manager approval recorded. Pending HR approval.';
+    }
+    return 'Leave request approved.';
+  };
+
+  const applyReviewedItem = useCallback((updated: PortalLeaveRequestRecord) => {
+    setItems((prev) => {
+      const index = prev.findIndex((item) => item.id === updated.id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -143,12 +173,18 @@ export const LeavePage = () => {
   };
 
   const handleReview = async (id: string, status: 'approved' | 'rejected') => {
+    if (reviewingId) return;
+
     try {
-      await leaveService.review(id, { status });
-      toast.success(status === 'approved' ? 'Leave request approved.' : 'Leave request rejected.');
-      await loadData();
+      setReviewingId(id);
+      const updated = await leaveService.review(id, { status });
+      applyReviewedItem(updated);
+      toast.success(reviewSuccessMessage(updated, status));
+      await refreshLeaves();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to review leave request'));
+    } finally {
+      setReviewingId(null);
     }
   };
 
@@ -251,16 +287,17 @@ export const LeavePage = () => {
         render: (row) => (
           <LeaveActionButtons
             row={row}
+            isReviewing={reviewingId === row.id}
             onEdit={() => setEditing(row)}
-            onApprove={() => handleReview(row.id, 'approved')}
-            onReject={() => handleReview(row.id, 'rejected')}
+            onApprove={() => void handleReview(row.id, 'approved')}
+            onReject={() => void handleReview(row.id, 'rejected')}
             onCancel={() => handleCancel(row.id)}
             onDelete={() => setDeleteTarget(row)}
           />
         ),
       },
     ],
-    [activeTab, table.rowIndexOffset]
+    [activeTab, table.rowIndexOffset, reviewingId]
   );
 
   if (!permsLoading && !canView) {

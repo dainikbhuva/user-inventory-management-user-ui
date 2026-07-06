@@ -185,16 +185,20 @@ export const buildPermissionMenuTree = (
   return treeGroups;
 };
 
+export const collectPermissionBasesFromModule = (module: PermissionTreeModule): string[] => {
+  if (module.linkType === 'dropdown' && module.children?.length) {
+    return module.children.map((child) => child.key);
+  }
+  return [module.permissionKey];
+};
+
+export const collectPermissionBasesFromGroup = (group: PermissionTreeGroup): string[] =>
+  group.modules.flatMap((module) => collectPermissionBasesFromModule(module));
+
 export const collectPermissionBasesFromTree = (tree: PermissionTreeGroup[]): string[] => {
   const bases: string[] = [];
   for (const group of tree) {
-    for (const mod of group.modules) {
-      if (mod.linkType === 'direct') {
-        bases.push(mod.permissionKey);
-      } else {
-        mod.children?.forEach((child) => bases.push(child.key));
-      }
-    }
+    bases.push(...collectPermissionBasesFromGroup(group));
   }
   return bases;
 };

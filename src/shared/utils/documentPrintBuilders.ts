@@ -1,34 +1,20 @@
 import type { PrintDocumentData, PrintDocumentParty } from '../types/documentPrint.types';
 import type {
   PurchaseOrderRecord,
-  PurchaseOrderFormValues,
   GRNRecord,
-  GRNFormValues,
   PurchaseReturnRecord,
-  PurchaseReturnFormValues,
   SalesOrderRecord,
-  SalesOrderFormValues,
   DeliveryChallanRecord,
-  DeliveryChallanFormValues,
   SalesInvoiceRecord,
-  SalesInvoiceFormValues,
   SalesReturnRecord,
-  SalesReturnFormValues,
-  TradingLineFormValues,
-  CustomerRecord,
 } from '../types/trading.types';
 import type {
   WorkOrderRecord,
-  WorkOrderFormValues,
   MaterialIssueRecord,
-  MaterialIssueFormValues,
   ProductionEntryRecord,
-  ProductionEntryFormValues,
 } from '../types/manufacturing.types';
-import type { InventorySupplierRecord, InventoryWarehouseRecord, InventoryTaxRecord } from '../types/inventoryMaster.types';
-import type { InventoryProductRecord, StockMovementRecord } from '../types/inventoryProduct.types';
+import type { StockMovementRecord } from '../types/inventoryProduct.types';
 import type { StockAdjustmentRecord } from '../types/inventoryStock.types';
-import { computeTradingDocumentTotals } from './tradingCalculations';
 import { formatPrintCurrency, formatPrintDate, formatPrintNumber } from './documentPrintFormat';
 
 type CompanyContext = { companyName?: string };
@@ -60,23 +46,6 @@ const tradingTotals = (subtotal: number, taxAmount: number, totalAmount: number,
   ...(extra ?? []),
   { label: 'Total', value: formatPrintCurrency(totalAmount), emphasis: true },
 ];
-
-const lineFromTradingForm = (line: TradingLineFormValues, index: number, products: InventoryProductRecord[]) => {
-  const product = products.find((p) => p.id === line.productId);
-  const qty = Number.parseFloat(line.quantity) || 0;
-  const rate = Number.parseFloat(line.unitPrice || line.unitCost || '0') || 0;
-  return {
-    sno: index + 1,
-    product: product?.productName || line.productName || '—',
-    code: product?.productCode || line.productCode || '—',
-    qty: formatPrintNumber(qty),
-    rate: formatPrintCurrency(rate),
-    amount: formatPrintCurrency(qty * rate),
-  };
-};
-
-const sumFormLines = (lines: TradingLineFormValues[], taxes: InventoryTaxRecord[] = []) =>
-  computeTradingDocumentTotals(lines, taxes);
 
 // ─── Purchase Order ───────────────────────────────────────────────────────────
 
@@ -116,46 +85,6 @@ export const buildPurchaseOrderPrintData = (
   footerText: 'This is a computer-generated purchase order.',
 });
 
-export const buildPurchaseOrderPrintDataFromForm = (
-  form: PurchaseOrderFormValues,
-  masters: {
-    suppliers: InventorySupplierRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    taxes?: InventoryTaxRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const supplier = masters.suppliers.find((s) => s.id === form.supplierId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const totals = sumFormLines(form.lines, masters.taxes ?? []);
-  return {
-    documentTitle: 'Purchase Order (Preview)',
-    documentNumber: form.poNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.poDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Expected Date', value: formatPrintDate(form.expectedDate) },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: supplierParty(supplier?.supplierName, supplier?.gstNumber, supplier?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'code', label: 'Code' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Price', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines: form.lines.map((line, i) => lineFromTradingForm(line, i, masters.products)),
-    totals: tradingTotals(totals.subtotal, totals.taxAmount, totals.totalAmount),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
 // ─── GRN ──────────────────────────────────────────────────────────────────────
 
 export const buildGRNPrintData = (item: GRNRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
@@ -190,58 +119,6 @@ export const buildGRNPrintData = (item: GRNRecord, ctx: CompanyContext = {}): Pr
   notes: item.notes,
   footerText: 'Goods receipt note for received stock.',
 });
-
-export const buildGRNPrintDataFromForm = (
-  form: GRNFormValues,
-  masters: {
-    suppliers: InventorySupplierRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    taxes?: InventoryTaxRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const supplier = masters.suppliers.find((s) => s.id === form.supplierId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const totals = sumFormLines(form.lines, masters.taxes ?? []);
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const received = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitCost || line.unitPrice || '0') || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      ordered: '—',
-      received: formatPrintNumber(received),
-      rate: formatPrintCurrency(rate),
-      amount: formatPrintCurrency(received * rate),
-    };
-  });
-  return {
-    documentTitle: 'Goods Receipt Note (Preview)',
-    documentNumber: form.grnNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.grnDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: supplierParty(supplier?.supplierName, supplier?.gstNumber, supplier?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'ordered', label: 'Ordered', align: 'right' },
-      { key: 'received', label: 'Received', align: 'right' },
-      { key: 'rate', label: 'Unit Cost', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines,
-    totals: tradingTotals(totals.subtotal, totals.taxAmount, totals.totalAmount),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
 
 // ─── Purchase Return ────────────────────────────────────────────────────────────
 
@@ -278,61 +155,6 @@ export const buildPurchaseReturnPrintData = (item: PurchaseReturnRecord, ctx: Co
   footerText: 'Purchase return document.',
 });
 
-export const buildPurchaseReturnPrintDataFromForm = (
-  form: PurchaseReturnFormValues,
-  masters: {
-    suppliers: InventorySupplierRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const supplier = masters.suppliers.find((s) => s.id === form.supplierId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const qty = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitCost || '0') || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      qty: formatPrintNumber(qty),
-      rate: formatPrintCurrency(rate),
-      amount: formatPrintCurrency(qty * rate),
-      reason: line.reason || '—',
-    };
-  });
-  const total = form.lines.reduce((sum, line) => {
-    const qty = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitCost || '0') || 0;
-    return sum + qty * rate;
-  }, 0);
-  return {
-    documentTitle: 'Purchase Return (Preview)',
-    documentNumber: form.returnNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.returnDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: supplierParty(supplier?.supplierName, supplier?.gstNumber, supplier?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Cost', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-      { key: 'reason', label: 'Reason' },
-    ],
-    lines,
-    totals: [{ label: 'Total', value: formatPrintCurrency(total), emphasis: true }],
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
 // ─── Sales Order ──────────────────────────────────────────────────────────────
 
 export const buildSalesOrderPrintData = (item: SalesOrderRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
@@ -368,46 +190,6 @@ export const buildSalesOrderPrintData = (item: SalesOrderRecord, ctx: CompanyCon
   footerText: 'Sales order document.',
 });
 
-export const buildSalesOrderPrintDataFromForm = (
-  form: SalesOrderFormValues,
-  masters: {
-    customers: CustomerRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    taxes?: InventoryTaxRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const customer = masters.customers.find((c) => c.id === form.customerId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const totals = sumFormLines(form.lines, masters.taxes ?? []);
-  return {
-    documentTitle: 'Sales Order (Preview)',
-    documentNumber: form.soNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.soDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Delivery Date', value: formatPrintDate(form.deliveryDate) },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: customerParty(customer?.customerName, customer?.gstNumber, customer?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'code', label: 'Code' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Price', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines: form.lines.map((line, i) => lineFromTradingForm(line, i, masters.products)),
-    totals: tradingTotals(totals.subtotal, totals.taxAmount, totals.totalAmount),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
 // ─── Delivery Challan ─────────────────────────────────────────────────────────
 
 export const buildDeliveryChallanPrintData = (item: DeliveryChallanRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
@@ -442,58 +224,6 @@ export const buildDeliveryChallanPrintData = (item: DeliveryChallanRecord, ctx: 
   notes: item.notes,
   footerText: 'Delivery challan for dispatched goods.',
 });
-
-export const buildDeliveryChallanPrintDataFromForm = (
-  form: DeliveryChallanFormValues,
-  masters: {
-    customers: CustomerRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    taxes?: InventoryTaxRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const customer = masters.customers.find((c) => c.id === form.customerId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const totals = sumFormLines(form.lines, masters.taxes ?? []);
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const dispatched = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitPrice || '0') || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      ordered: '—',
-      dispatched: formatPrintNumber(dispatched),
-      rate: formatPrintCurrency(rate),
-      amount: formatPrintCurrency(dispatched * rate),
-    };
-  });
-  return {
-    documentTitle: 'Delivery Challan (Preview)',
-    documentNumber: form.dcNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.dcDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: customerParty(customer?.customerName, customer?.gstNumber, customer?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'ordered', label: 'Ordered', align: 'right' },
-      { key: 'dispatched', label: 'Dispatched', align: 'right' },
-      { key: 'rate', label: 'Unit Price', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines,
-    totals: tradingTotals(totals.subtotal, totals.taxAmount, totals.totalAmount),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
 
 // ─── Sales Invoice ──────────────────────────────────────────────────────────────
 
@@ -535,49 +265,6 @@ export const buildSalesInvoicePrintData = (item: SalesInvoiceRecord, ctx: Compan
   footerText: 'This is a computer-generated tax invoice.',
 });
 
-export const buildSalesInvoicePrintDataFromForm = (
-  form: SalesInvoiceFormValues,
-  masters: {
-    customers: CustomerRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    taxes?: InventoryTaxRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const customer = masters.customers.find((c) => c.id === form.customerId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const totals = sumFormLines(form.lines, masters.taxes ?? []);
-  const discount = Number.parseFloat(form.discount) || 0;
-  const totalAmount = totals.totalAmount - discount;
-  return {
-    documentTitle: 'Tax Invoice (Preview)',
-    documentNumber: form.invoiceNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.invoiceDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Due Date', value: formatPrintDate(form.dueDate) },
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: customerParty(customer?.customerName, customer?.gstNumber, customer?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Price', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines: form.lines.map((line, i) => lineFromTradingForm(line, i, masters.products)),
-    totals: tradingTotals(totals.subtotal, totals.taxAmount, totalAmount, [
-      ...(discount > 0 ? [{ label: 'Discount', value: formatPrintCurrency(discount) }] : []),
-    ]),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
 // ─── Sales Return ─────────────────────────────────────────────────────────────
 
 export const buildSalesReturnPrintData = (item: SalesReturnRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
@@ -613,61 +300,6 @@ export const buildSalesReturnPrintData = (item: SalesReturnRecord, ctx: CompanyC
   footerText: 'Sales return document.',
 });
 
-export const buildSalesReturnPrintDataFromForm = (
-  form: SalesReturnFormValues,
-  masters: {
-    customers: CustomerRecord[];
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const customer = masters.customers.find((c) => c.id === form.customerId);
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const qty = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitPrice || '0') || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      qty: formatPrintNumber(qty),
-      rate: formatPrintCurrency(rate),
-      amount: formatPrintCurrency(qty * rate),
-      reason: line.reason || '—',
-    };
-  });
-  const total = form.lines.reduce((sum, line) => {
-    const qty = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitPrice || '0') || 0;
-    return sum + qty * rate;
-  }, 0);
-  return {
-    documentTitle: 'Sales Return (Preview)',
-    documentNumber: form.returnNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.returnDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reference', value: form.referenceNo },
-    ],
-    party: customerParty(customer?.customerName, customer?.gstNumber, customer?.mobile),
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Price', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-      { key: 'reason', label: 'Reason' },
-    ],
-    lines,
-    totals: [{ label: 'Total', value: formatPrintCurrency(total), emphasis: true }],
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
 // ─── Manufacturing ────────────────────────────────────────────────────────────
 
 export const buildWorkOrderPrintData = (item: WorkOrderRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
@@ -700,41 +332,6 @@ export const buildWorkOrderPrintData = (item: WorkOrderRecord, ctx: CompanyConte
   footerText: 'Work order for production planning.',
 });
 
-export const buildWorkOrderPrintDataFromForm = (
-  form: WorkOrderFormValues,
-  masters: { warehouses: InventoryWarehouseRecord[]; boms: { id: string; bomName: string; bomCode: string }[] },
-  workOrderNumber: string,
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const bom = masters.boms.find((b) => b.id === form.bomId);
-  return {
-    documentTitle: 'Work Order (Preview)',
-    documentNumber: workOrderNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.workOrderDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'BOM', value: bom ? `${bom.bomName} (${bom.bomCode})` : undefined },
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Planned Qty', value: formatPrintNumber(form.plannedQty, 0) },
-      { label: 'Scheduled', value: formatPrintDate(form.scheduledDate) },
-    ],
-    columns: [
-      { key: 'info', label: 'Details' },
-      { key: 'value', label: 'Value' },
-    ],
-    lines: [
-      { info: 'Work Order Date', value: formatPrintDate(form.workOrderDate) },
-      { info: 'Planned Quantity', value: formatPrintNumber(form.plannedQty, 0) },
-      { info: 'BOM', value: bom?.bomName || '—' },
-      { info: 'Warehouse', value: warehouse?.name || '—' },
-    ],
-    notes: form.notes,
-    footerText: 'Draft preview — material requirements are calculated after save.',
-  };
-};
-
 export const buildMaterialIssuePrintData = (item: MaterialIssueRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
   documentTitle: 'Material Issue',
   documentNumber: item.issueNumber,
@@ -759,42 +356,6 @@ export const buildMaterialIssuePrintData = (item: MaterialIssueRecord, ctx: Comp
   notes: item.notes,
   footerText: 'Material issue slip for production.',
 });
-
-export const buildMaterialIssuePrintDataFromForm = (
-  form: MaterialIssueFormValues,
-  masters: { products: InventoryProductRecord[]; workOrders: { id: string; workOrderNumber: string }[] },
-  issueNumber: string,
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const wo = masters.workOrders.find((w) => w.id === form.workOrderId);
-  return {
-    documentTitle: 'Material Issue (Preview)',
-    documentNumber: issueNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.issueDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [{ label: 'Work Order', value: wo?.workOrderNumber }],
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Material' },
-      { key: 'required', label: 'Required', align: 'right' },
-      { key: 'issued', label: 'Issued', align: 'right' },
-      { key: 'notes', label: 'Notes' },
-    ],
-    lines: form.lines.map((line, i) => {
-      const product = masters.products.find((p) => p.id === line.productId);
-      return {
-        sno: i + 1,
-        product: product?.productName || line.productId || '—',
-        required: formatPrintNumber(line.requiredQty),
-        issued: formatPrintNumber(line.issuedQty),
-        notes: line.notes || '—',
-      };
-    }),
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
 
 export const buildProductionEntryPrintData = (item: ProductionEntryRecord, ctx: CompanyContext = {}): PrintDocumentData => ({
   documentTitle: 'Production Entry',
@@ -823,45 +384,6 @@ export const buildProductionEntryPrintData = (item: ProductionEntryRecord, ctx: 
   notes: item.notes,
   footerText: 'Production entry receipt.',
 });
-
-export const buildProductionEntryPrintDataFromForm = (
-  form: ProductionEntryFormValues,
-  masters: { products: InventoryProductRecord[]; workOrders: { id: string; workOrderNumber: string }[] },
-  entryNumber: string,
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const wo = masters.workOrders.find((w) => w.id === form.workOrderId);
-  return {
-    documentTitle: 'Production Entry (Preview)',
-    documentNumber: entryNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.entryDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Work Order', value: wo?.workOrderNumber },
-      { label: 'Produced Qty', value: formatPrintNumber(form.producedQty) },
-    ],
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Material' },
-      { key: 'returned', label: 'Returned Qty', align: 'right' },
-      { key: 'notes', label: 'Notes' },
-    ],
-    lines: form.materialReturns.length
-      ? form.materialReturns.map((line, i) => {
-          const product = masters.products.find((p) => p.id === line.productId);
-          return {
-            sno: i + 1,
-            product: product?.productName || line.productId || '—',
-            returned: formatPrintNumber(line.returnedQty),
-            notes: line.notes || '—',
-          };
-        })
-      : [{ sno: 1, product: 'Finished goods produced', returned: formatPrintNumber(form.producedQty), notes: '—' }],
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
 
 // ─── Stock ────────────────────────────────────────────────────────────────────
 
@@ -926,109 +448,3 @@ export const buildStockAdjustmentPrintData = (item: StockAdjustmentRecord, ctx: 
   notes: item.notes,
   footerText: 'Physical stock adjustment document.',
 });
-
-export const buildStockMovementPrintDataFromForm = (
-  form: import('../types/inventoryProduct.types').StockMovementFormValues,
-  movementType: 'in' | 'out',
-  masters: {
-    warehouses: InventoryWarehouseRecord[];
-    suppliers: InventorySupplierRecord[];
-    products: InventoryProductRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const supplier = masters.suppliers.find((s) => s.id === form.supplierId);
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const qty = Number.parseFloat(line.quantity) || 0;
-    const rate = Number.parseFloat(line.unitCost) || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      code: product?.productCode || '—',
-      qty: formatPrintNumber(qty),
-      rate: formatPrintCurrency(rate),
-      amount: formatPrintCurrency(qty * rate),
-    };
-  });
-  const totalQty = form.lines.reduce((sum, line) => sum + (Number.parseFloat(line.quantity) || 0), 0);
-  return {
-    documentTitle: movementType === 'in' ? 'Stock In (Preview)' : 'Stock Out (Preview)',
-    documentNumber: form.documentNo || 'DRAFT',
-    documentDate: formatPrintDate(form.movementDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Supplier', value: supplier?.supplierName },
-      { label: 'Reference', value: form.referenceNo },
-      { label: 'Total Qty', value: formatPrintNumber(totalQty) },
-    ],
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'code', label: 'Code' },
-      { key: 'qty', label: 'Qty', align: 'right' },
-      { key: 'rate', label: 'Unit Cost', align: 'right' },
-      { key: 'amount', label: 'Amount', align: 'right' },
-    ],
-    lines,
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};
-
-export const buildStockAdjustmentPrintDataFromForm = (
-  form: import('../types/inventoryStock.types').StockAdjustmentFormValues,
-  masters: {
-    warehouses: InventoryWarehouseRecord[];
-    products: InventoryProductRecord[];
-    warehouseStock: import('../types/inventoryStock.types').CurrentStockRecord[];
-  },
-  ctx: CompanyContext = {}
-): PrintDocumentData => {
-  const warehouse = masters.warehouses.find((w) => w.id === form.warehouseId);
-  const getSystemQty = (productId: string) => {
-    if (!form.warehouseId || !productId) return 0;
-    const row = masters.warehouseStock.find(
-      (item) => item.warehouse.id === form.warehouseId && item.product.id === productId
-    );
-    return row?.currentStock ?? 0;
-  };
-  const lines = form.lines.map((line, i) => {
-    const product = masters.products.find((p) => p.id === line.productId);
-    const system = getSystemQty(line.productId);
-    const physical = Number.parseFloat(line.physicalQty) || 0;
-    return {
-      sno: i + 1,
-      product: product?.productName || '—',
-      system: formatPrintNumber(system),
-      physical: formatPrintNumber(physical),
-      difference: formatPrintNumber(physical - system),
-      notes: line.reasonNote || '—',
-    };
-  });
-  return {
-    documentTitle: 'Stock Adjustment (Preview)',
-    documentNumber: form.adjustmentNumber || 'DRAFT',
-    documentDate: formatPrintDate(form.adjustmentDate),
-    status: 'Draft Preview',
-    companyName: ctx.companyName,
-    meta: [
-      { label: 'Warehouse', value: warehouse?.name },
-      { label: 'Reason', value: form.reason || undefined },
-    ],
-    columns: [
-      { key: 'sno', label: '#', align: 'center', width: '6%' },
-      { key: 'product', label: 'Product' },
-      { key: 'system', label: 'System Qty', align: 'right' },
-      { key: 'physical', label: 'Physical Qty', align: 'right' },
-      { key: 'difference', label: 'Difference', align: 'right' },
-      { key: 'notes', label: 'Notes' },
-    ],
-    lines,
-    notes: form.notes,
-    footerText: 'Draft preview — values may change before save.',
-  };
-};

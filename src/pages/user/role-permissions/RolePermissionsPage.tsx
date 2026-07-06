@@ -13,6 +13,8 @@ import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useMenu } from '../../../hooks/useMenu';
 import {
+  areAllBasesActionEnabled,
+  areSomeBasesActionEnabled,
   isActionEnabledForBase,
   keysToMatrix,
   matrixToKeys,
@@ -20,6 +22,7 @@ import {
   PERMISSION_ACTION_LABELS,
   PERMISSION_ACTIONS,
   setMatrixActionForBase,
+  setMatrixActionForBases,
   type PermissionAction,
   type PermissionMatrix,
 } from '../../../shared/utils/permissionMatrix';
@@ -29,6 +32,8 @@ import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermi
 import { useAuth } from '../../../shared/auth/useAuth';
 import {
   buildPermissionMenuTree,
+  collectPermissionBasesFromGroup,
+  collectPermissionBasesFromModule,
   collectPermissionBasesFromTree,
   type PermissionTreeChild,
   type PermissionTreeGroup,
@@ -37,6 +42,58 @@ import {
 
 const PERMISSIONS_MODULE = PORTAL_PERMISSION_MODULES.permissions;
 const PERMISSIONS_PAGE_KEY = `${PERMISSIONS_MODULE.moduleCode}/${PERMISSIONS_MODULE.itemCode}`;
+
+interface BulkActionCellsProps {
+  bases: string[];
+  scopeLabel: string;
+  isSuperAdmin: boolean;
+  matrix: PermissionMatrix;
+  onBulkToggle: (bases: string[], action: PermissionAction, enabled: boolean) => void;
+  readOnly?: boolean;
+  variant?: 'group' | 'module';
+}
+
+const PermissionBulkActionCells = ({
+  bases,
+  scopeLabel,
+  isSuperAdmin,
+  matrix,
+  onBulkToggle,
+  readOnly,
+  variant = 'module',
+}: BulkActionCellsProps) => {
+  const rowDisabled = isSuperAdmin || readOnly || bases.length === 0;
+  const cellClass =
+    variant === 'group'
+      ? 'permission-action-cell bg-surface-2/80 py-2'
+      : 'permission-action-cell bg-surface-2/60 py-2';
+
+  return (
+    <>
+      {PERMISSION_ACTIONS.map((action) => {
+        const allChecked = areAllBasesActionEnabled(matrix, bases, action);
+        const someChecked = areSomeBasesActionEnabled(matrix, bases, action);
+
+        return (
+          <td key={action} className={cellClass}>
+            <div className="flex flex-col items-center justify-center gap-0.5">
+              <PermissionToggle
+                checked={isSuperAdmin ? true : allChecked}
+                disabled={rowDisabled}
+                ariaLabel={`${scopeLabel} all ${PERMISSION_ACTION_LABELS[action]}`}
+                onChange={(enabled) => onBulkToggle(bases, action, enabled)}
+                className={!isSuperAdmin && someChecked && !allChecked ? 'opacity-70' : undefined}
+              />
+              {variant === 'group' ? (
+                <span className="text-[10px] text-muted">All</span>
+              ) : null}
+            </div>
+          </td>
+        );
+      })}
+    </>
+  );
+};
 
 interface ActionCellsProps {
   permissionKey: string;
@@ -117,6 +174,7 @@ const PermissionModuleRows = ({
   isSuperAdmin,
   matrix,
   onToggle,
+  onBulkToggle,
   readOnly,
   expanded,
   onToggleExpand,
@@ -126,15 +184,18 @@ const PermissionModuleRows = ({
   isSuperAdmin: boolean;
   matrix: PermissionMatrix;
   onToggle: (base: string, action: PermissionAction, enabled: boolean) => void;
+  onBulkToggle: (bases: string[], action: PermissionAction, enabled: boolean) => void;
   readOnly?: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
 }) => {
   if (module.linkType === 'dropdown' && module.children?.length) {
+    const childBases = collectPermissionBasesFromModule(module);
+
     return (
       <>
         <tr className="border-b border-base bg-surface-2/50">
-          <td colSpan={1 + PERMISSION_ACTIONS.length} className="px-4 py-2">
+          <td className="permission-menu-cell border-r border-base px-4 py-2">
             <button
               type="button"
               onClick={onToggleExpand}
@@ -145,7 +206,17 @@ const PermissionModuleRows = ({
               />
               <span>{module.label}</span>
             </button>
+            <p className="mt-0.5 pl-6 text-xs text-muted">Toggle all items below</p>
           </td>
+          <PermissionBulkActionCells
+            bases={childBases}
+            scopeLabel={module.label}
+            isSuperAdmin={isSuperAdmin}
+            matrix={matrix}
+            onBulkToggle={onBulkToggle}
+            readOnly={readOnly}
+            variant="module"
+          />
         </tr>
         {expanded
           ? module.children.map((child) => (
@@ -180,6 +251,53 @@ const PermissionModuleRows = ({
     </tr>
   );
 };
+
+const MobileBulkActions = ({
+  title,
+  subtitle,
+  bases,
+  scopeLabel,
+  isSuperAdmin,
+  matrix,
+  onBulkToggle,
+  readOnly,
+}: {
+  title: string;
+  subtitle: string;
+  bases: string[];
+  scopeLabel: string;
+  isSuperAdmin: boolean;
+  matrix: PermissionMatrix;
+  onBulkToggle: (bases: string[], action: PermissionAction, enabled: boolean) => void;
+  readOnly?: boolean;
+}) => (
+  <div className="rounded-sm border border-dashed border-base bg-surface-2/60 p-4">
+    <p className="text-sm font-semibold text-body">{title}</p>
+    <p className="mt-0.5 text-xs text-muted">{subtitle}</p>
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      {PERMISSION_ACTIONS.map((action) => {
+        const allChecked = areAllBasesActionEnabled(matrix, bases, action);
+        const someChecked = areSomeBasesActionEnabled(matrix, bases, action);
+
+        return (
+          <div
+            key={action}
+            className="flex items-center justify-between rounded-sm border border-base bg-surface px-3 py-2"
+          >
+            <span className="text-xs text-body">All {PERMISSION_ACTION_LABELS[action]}</span>
+            <PermissionToggle
+              checked={isSuperAdmin ? true : allChecked}
+              disabled={isSuperAdmin || readOnly || bases.length === 0}
+              ariaLabel={`${scopeLabel} all ${PERMISSION_ACTION_LABELS[action]}`}
+              onChange={(enabled) => onBulkToggle(bases, action, enabled)}
+              className={!isSuperAdmin && someChecked && !allChecked ? 'opacity-70' : undefined}
+            />
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
 
 const hasViewAccessToPage = (matrix: PermissionMatrix, routePageKey?: string) =>
   isActionEnabledForBase(matrix, PERMISSIONS_PAGE_KEY, 'view') ||
@@ -307,6 +425,11 @@ const RolePermissionsPageContent = () => {
     setMatrix((prev) => setMatrixActionForBase(prev, base, action, enabled));
   };
 
+  const handleBulkToggle = (bases: string[], action: PermissionAction, enabled: boolean) => {
+    if (!canEdit || bases.length === 0) return;
+    setMatrix((prev) => setMatrixActionForBases(prev, bases, action, enabled));
+  };
+
   const toggleModuleExpand = (groupId: string, moduleCode: string) => {
     const key = `${groupId}:${moduleCode}`;
     setExpandedModules((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -362,48 +485,91 @@ const RolePermissionsPageContent = () => {
         </tr>
       </thead>
       <tbody>
-        {permissionTree.map((group) => (
-          <Fragment key={group.id}>
-            {group.name ? (
-              <tr className="border-b border-base bg-surface-2">
-                <td colSpan={1 + PERMISSION_ACTIONS.length} className="px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-2">
-                    {group.name}
-                  </p>
-                </td>
-              </tr>
-            ) : null}
-            {group.modules.map((mod) => (
-              <PermissionModuleRows
-                key={`${group.id}-${mod.moduleCode}`}
-                groupId={group.id}
-                module={mod}
-                isSuperAdmin={isSuperAdmin}
-                matrix={matrix}
-                onToggle={handleToggle}
-                readOnly={!canEdit}
-                expanded={expandedModules[`${group.id}:${mod.moduleCode}`] ?? true}
-                onToggleExpand={() => toggleModuleExpand(group.id, mod.moduleCode)}
-              />
-            ))}
-          </Fragment>
-        ))}
+        {permissionTree.map((group) => {
+          const groupBases = collectPermissionBasesFromGroup(group);
+          const showGroupBulk = groupBases.length > 1;
+
+          return (
+            <Fragment key={group.id}>
+              {group.name ? (
+                <tr className="border-b border-base bg-surface-2">
+                  <td colSpan={1 + PERMISSION_ACTIONS.length} className="px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-2">
+                      {group.name}
+                    </p>
+                  </td>
+                </tr>
+              ) : null}
+              {showGroupBulk ? (
+                <tr className="border-b border-base bg-surface-2/70">
+                  <td className="permission-menu-cell border-r border-base px-4 py-2">
+                    <p className="text-sm font-semibold text-body">
+                      {group.name ? `All in ${group.name}` : 'All in section'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">Apply to every menu in this group</p>
+                  </td>
+                  <PermissionBulkActionCells
+                    bases={groupBases}
+                    scopeLabel={group.name || 'section'}
+                    isSuperAdmin={isSuperAdmin}
+                    matrix={matrix}
+                    onBulkToggle={handleBulkToggle}
+                    readOnly={!canEdit}
+                    variant="group"
+                  />
+                </tr>
+              ) : null}
+              {group.modules.map((mod) => (
+                <PermissionModuleRows
+                  key={`${group.id}-${mod.moduleCode}`}
+                  groupId={group.id}
+                  module={mod}
+                  isSuperAdmin={isSuperAdmin}
+                  matrix={matrix}
+                  onToggle={handleToggle}
+                  onBulkToggle={handleBulkToggle}
+                  readOnly={!canEdit}
+                  expanded={expandedModules[`${group.id}:${mod.moduleCode}`] ?? true}
+                  onToggleExpand={() => toggleModuleExpand(group.id, mod.moduleCode)}
+                />
+              ))}
+            </Fragment>
+          );
+        })}
       </tbody>
     </table>
   );
 
-  const renderMobileGroup = (group: PermissionTreeGroup) => (
+  const renderMobileGroup = (group: PermissionTreeGroup) => {
+    const groupBases = collectPermissionBasesFromGroup(group);
+    const showGroupBulk = groupBases.length > 1;
+
+    return (
     <section key={group.id} className="space-y-3">
       {group.name ? (
         <div className="rounded-sm border border-base bg-surface-2 px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">{group.name}</p>
         </div>
       ) : null}
+      {showGroupBulk ? (
+        <MobileBulkActions
+          title={group.name ? `All in ${group.name}` : 'All in section'}
+          subtitle="Apply to every menu in this group"
+          bases={groupBases}
+          scopeLabel={group.name || 'section'}
+          isSuperAdmin={isSuperAdmin}
+          matrix={matrix}
+          onBulkToggle={handleBulkToggle}
+          readOnly={!canEdit}
+        />
+      ) : null}
       {group.modules.map((mod) => {
         const expandKey = `${group.id}:${mod.moduleCode}`;
         const expanded = expandedModules[expandKey] ?? true;
 
         if (mod.linkType === 'dropdown' && mod.children?.length) {
+          const childBases = collectPermissionBasesFromModule(mod);
+
           return (
             <div key={mod.moduleCode} className="overflow-hidden rounded-sm border border-base">
               <button
@@ -416,9 +582,20 @@ const RolePermissionsPageContent = () => {
                   className={`h-4 w-4 text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
                 />
               </button>
-              {expanded
-                ? mod.children.map((child) => (
-                    <article key={child.key} className="border-t border-base bg-surface p-4">
+              {expanded ? (
+                <div className="space-y-3 border-t border-base bg-surface p-4">
+                  <MobileBulkActions
+                    title={`All in ${mod.label}`}
+                    subtitle="Apply to every item in this menu"
+                    bases={childBases}
+                    scopeLabel={mod.label}
+                    isSuperAdmin={isSuperAdmin}
+                    matrix={matrix}
+                    onBulkToggle={handleBulkToggle}
+                    readOnly={!canEdit}
+                  />
+                  {mod.children.map((child) => (
+                    <article key={child.key} className="rounded-sm border border-base bg-surface-2/20 p-4">
                       <p className="pl-2 text-sm font-medium text-body">{child.label}</p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {PERMISSION_ACTIONS.map((action) => {
@@ -448,8 +625,9 @@ const RolePermissionsPageContent = () => {
                         })}
                       </div>
                     </article>
-                  ))
-                : null}
+                  ))}
+                </div>
+              ) : null}
             </div>
           );
         }
@@ -489,7 +667,8 @@ const RolePermissionsPageContent = () => {
         );
       })}
     </section>
-  );
+    );
+  };
 
   if (!permsLoading && !canView) {
     return (
@@ -509,7 +688,8 @@ const RolePermissionsPageContent = () => {
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-body">Sidebar permissions</h2>
             <p className="mt-1 hidden text-sm text-muted sm:block">
-              Set sidebar access per menu — expand dropdowns to configure sub-items.
+              Set sidebar access per menu — use &quot;All&quot; toggles per section or dropdown to
+              apply View, Create, and other actions in bulk.
             </p>
           </div>
           <div className="w-full md:w-auto md:min-w-[220px] md:shrink-0">

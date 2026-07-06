@@ -21,3 +21,13 @@ export const formatPrintNumber = (value?: number | null, fractionDigits = 2) => 
     maximumFractionDigits: fractionDigits,
   }).format(num);
 };
+
+/** Browser PDF save uses document.title — keep it readable and filename-safe. */
+export const formatPrintDocumentTitle = (documentTitle: string, documentNumber?: string) => {
+  const parts = [documentTitle, documentNumber?.trim()].filter(Boolean);
+  return parts
+    .join(' - ')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+};

@@ -18,6 +18,7 @@ export type ProductPayload = {
   minStock?: number;
   maxStock?: number;
   barcode?: string;
+  productType?: ProductType;
   status?: 'active' | 'inactive';
 };
 

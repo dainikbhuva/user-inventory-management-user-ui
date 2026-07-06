@@ -24,6 +24,7 @@ export const LeaveActionButtons = ({
   onReject,
   onCancel,
   onDelete,
+  isReviewing = false,
 }: {
   row: PortalLeaveRequestRecord;
   onEdit: () => void;
@@ -31,9 +32,11 @@ export const LeaveActionButtons = ({
   onReject: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  isReviewing?: boolean;
 }) => {
   const { permissions } = row;
   const actions: ReactNode[] = [];
+  const reviewDisabled = isReviewing;
 
   if (permissions.canEdit) {
     actions.push(
@@ -56,7 +59,8 @@ export const LeaveActionButtons = ({
         type="button"
         title="Approve"
         onClick={onApprove}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-emerald-600 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+        disabled={reviewDisabled}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-emerald-600 transition hover:border-emerald-500 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Check className="h-4 w-4" />
       </button>,
@@ -65,7 +69,8 @@ export const LeaveActionButtons = ({
         type="button"
         title="Reject"
         onClick={onReject}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-red-500 transition hover:border-red-500 hover:bg-red-500/10"
+        disabled={reviewDisabled}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-red-500 transition hover:border-red-500 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X className="h-4 w-4" />
       </button>

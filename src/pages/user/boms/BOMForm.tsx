@@ -103,6 +103,11 @@ export const BOMForm = ({
                 <option key={p.id} value={p.id}>{p.productName} ({p.productCode})</option>
               ))}
             </Select>
+            {finishedProducts.length === 0 ? (
+              <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                No finished products yet. Create a product with type &quot;Finished Goods&quot; or &quot;Semi Finished&quot; under Inventory → Products.
+              </p>
+            ) : null}
           </FormField>
 
           <FormField label="Output Quantity" required>

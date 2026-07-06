@@ -7,7 +7,8 @@ import { Select } from '../../../components/ui/Select';
 import { StatusToggle } from '../../../components/common/StatusToggle';
 import type { PortalMasterRecord } from '../../../shared/types/portal.types';
 import type { InventoryTaxRecord, InventoryWarehouseRecord } from '../../../shared/types/inventoryMaster.types';
-import type { ProductFormValues } from '../../../shared/types/inventoryProduct.types';
+import type { ProductFormValues, ProductType } from '../../../shared/types/inventoryProduct.types';
+import { PRODUCT_TYPE_OPTIONS } from '../../../shared/types/inventoryProduct.types';
 import type { ProductPayload } from '../../../services/product.service';
 
 interface ProductFormProps {
@@ -178,6 +179,23 @@ export const ProductForm = ({
             </Select>
           </FormField>
 
+          <FormField label="Product type" required error={fieldError('productType')}>
+            <Select
+              value={value.productType}
+              onChange={(e) => touch('productType', e.target.value as ProductType)}
+              error={Boolean(fieldError('productType'))}
+            >
+              {PRODUCT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1.5 text-xs text-muted">
+              {PRODUCT_TYPE_OPTIONS.find((option) => option.value === value.productType)?.hint}
+            </p>
+          </FormField>
+
           <FormField label="Barcode" error={fieldError('barcode')}>
             <Input
               value={value.barcode}
@@ -313,6 +331,7 @@ export const emptyProductForm = (): ProductFormValues => ({
   minStock: '0',
   maxStock: '0',
   barcode: '',
+  productType: 'trading',
   status: 'active',
 });
 
@@ -330,6 +349,7 @@ export const recordToFormValues = (item: {
   minStock: number;
   maxStock: number;
   barcode?: string;
+  productType?: ProductType;
   status: 'active' | 'inactive';
 }): ProductFormValues => ({
   productCode: item.productCode,
@@ -345,6 +365,7 @@ export const recordToFormValues = (item: {
   minStock: String(item.minStock),
   maxStock: String(item.maxStock),
   barcode: item.barcode ?? '',
+  productType: item.productType ?? 'trading',
   status: item.status,
 });
 
@@ -369,5 +390,6 @@ export const formValuesToPayload = (
   minStock: Number.parseFloat(form.minStock) || 0,
   maxStock: Number.parseFloat(form.maxStock) || 0,
   barcode: form.barcode.trim() || undefined,
+  productType: form.productType,
   status: form.status,
 });
