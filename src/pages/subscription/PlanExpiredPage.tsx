@@ -143,14 +143,15 @@ export const PlanExpiredPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
+      <div className="theme-scrollbar flex h-full max-h-screen items-center justify-center overflow-y-auto bg-surface">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-3 px-4 py-10">
+    <div className="theme-scrollbar h-full max-h-screen overflow-y-auto bg-surface-3">
+      <div className="relative min-h-min px-4 py-10 pb-16">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -right-20 top-0 h-72 w-72 rounded-full bg-primary-soft blur-3xl" />
         <div className="absolute bottom-0 left-0 h-56 w-56 rounded-full bg-primary-soft blur-3xl" />
@@ -338,6 +339,7 @@ export const PlanExpiredPage = () => {
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   );
