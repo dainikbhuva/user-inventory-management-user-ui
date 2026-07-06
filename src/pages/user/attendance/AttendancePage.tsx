@@ -4,7 +4,16 @@ import { UserLayout } from '../../../components/layout/Layout';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
+import { TableExportButton } from '../../../components/common/TableExportButton';
 import { attendanceService } from '../../../services/attendance.service';
+import { AttendanceAdminPanel } from './AttendanceAdminPanel';
+import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { useCsvExport } from '../../../hooks/useCsvExport';
+import {
+  myAttendanceHistoryCsvColumns,
+  teamAttendanceCsvColumns,
+} from '../../../shared/utils/attendanceCsvExport';
 import type {
   AttendanceTeamAccess,
   DailyAttendanceRow,
@@ -21,7 +30,7 @@ const monthStartIso = () => {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
 };
 
-type TabKey = 'today' | 'history' | 'team';
+type TabKey = 'today' | 'history' | 'team' | 'admin';
 
 const formatTime = (iso?: string) => {
   if (!iso) return '—';
@@ -217,7 +226,7 @@ const TodayPanel = () => {
   );
 };
 
-const HistoryPanel = () => {
+const HistoryPanel = ({ canExport }: { canExport: boolean }) => {
   const [from, setFrom] = useState(monthStartIso);
   const [to, setTo] = useState(todayIso());
   const [records, setRecords] = useState<PortalAttendanceRecord[]>([]);
@@ -238,9 +247,12 @@ const HistoryPanel = () => {
     void load();
   }, [load]);
 
+  const exportProps = useCsvExport('My Attendance History', myAttendanceHistoryCsvColumns, records, canExport);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full max-w-xs">
           <label className="mb-1.5 block text-sm font-medium text-body">From</label>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -249,6 +261,13 @@ const HistoryPanel = () => {
           <label className="mb-1.5 block text-sm font-medium text-body">To</label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
+        </div>
+        {exportProps.showExport ? (
+          <TableExportButton
+            onClick={exportProps.onExport}
+            disabled={isLoading || exportProps.exportDisabled}
+          />
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-sm border border-base bg-surface shadow-sm">
@@ -295,7 +314,7 @@ const HistoryPanel = () => {
   );
 };
 
-const TeamPanel = ({ teamAccess }: { teamAccess: AttendanceTeamAccess }) => {
+const TeamPanel = ({ teamAccess, canExport }: { teamAccess: AttendanceTeamAccess; canExport: boolean }) => {
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [rows, setRows] = useState<DailyAttendanceRow[]>([]);
   const [scopeLabel, setScopeLabel] = useState(teamAccess.scopeLabel);
@@ -342,9 +361,28 @@ const TeamPanel = ({ teamAccess }: { teamAccess: AttendanceTeamAccess }) => {
     }
   };
 
+  const handleMarkPresent = async (userId: string) => {
+    try {
+      setMarkingUserId(userId);
+      await attendanceService.markStatus({ userId, date: selectedDate, status: 'present' });
+      await loadSheet(selectedDate);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to mark present'));
+    } finally {
+      setMarkingUserId(null);
+    }
+  };
+
   const markedCount = useMemo(
     () => summary.present + summary.absent + summary.late + summary.half_day,
     [summary]
+  );
+
+  const exportProps = useCsvExport(
+    `Team Attendance ${selectedDate}`,
+    teamAttendanceCsvColumns,
+    rows,
+    canExport
   );
 
   return (
@@ -354,9 +392,17 @@ const TeamPanel = ({ teamAccess }: { teamAccess: AttendanceTeamAccess }) => {
           Showing <span className="font-medium text-body">{scopeLabel}</span> only.
           {!canMark ? ' You can view but not edit team attendance.' : null}
         </p>
-        <div className="w-full max-w-xs">
-          <label className="mb-1.5 block text-sm font-medium text-body">Date</label>
-          <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+        <div className="flex items-end gap-2">
+          <div className="w-full max-w-xs">
+            <label className="mb-1.5 block text-sm font-medium text-body">Date</label>
+            <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+          </div>
+          {exportProps.showExport ? (
+            <TableExportButton
+              onClick={exportProps.onExport}
+              disabled={isLoading || exportProps.exportDisabled}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -420,16 +466,28 @@ const TeamPanel = ({ teamAccess }: { teamAccess: AttendanceTeamAccess }) => {
                     </td>
                     {canMark ? (
                       <td className="px-4 py-3 text-center">
-                        {row.status !== 'absent' ? (
-                          <button
-                            type="button"
-                            disabled={markingUserId === row.user.id}
-                            onClick={() => handleMarkAbsent(row.user.id)}
-                            className="rounded-sm border border-base px-2 py-1 text-xs text-red-500 transition hover:bg-red-500/10"
-                          >
-                            Mark absent
-                          </button>
-                        ) : null}
+                        <div className="flex items-center justify-center gap-2">
+                          {row.status !== 'present' && row.status !== 'late' ? (
+                            <button
+                              type="button"
+                              disabled={markingUserId === row.user.id}
+                              onClick={() => handleMarkPresent(row.user.id)}
+                              className="rounded-sm border border-base px-2 py-1 text-xs text-emerald-600 transition hover:bg-emerald-500/10"
+                            >
+                              Mark present
+                            </button>
+                          ) : null}
+                          {row.status !== 'absent' ? (
+                            <button
+                              type="button"
+                              disabled={markingUserId === row.user.id}
+                              onClick={() => handleMarkAbsent(row.user.id)}
+                              className="rounded-sm border border-base px-2 py-1 text-xs text-red-500 transition hover:bg-red-500/10"
+                            >
+                              Mark absent
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     ) : null}
                   </tr>
@@ -446,6 +504,10 @@ const TeamPanel = ({ teamAccess }: { teamAccess: AttendanceTeamAccess }) => {
 export const AttendancePage = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [teamAccess, setTeamAccess] = useState<AttendanceTeamAccess | null>(null);
+  const { canView: canViewAdmin, canExport, isLoading: permsLoading } = useModulePermissions(
+    PORTAL_PERMISSION_MODULES.attendance.moduleCode,
+    PORTAL_PERMISSION_MODULES.attendance.itemCode
+  );
 
   useEffect(() => {
     const loadTeamAccess = async () => {
@@ -470,15 +532,19 @@ export const AttendancePage = () => {
         { key: 'today' as const, label: 'Today' },
         { key: 'history' as const, label: 'My history' },
         ...(teamAccess?.canView ? [{ key: 'team' as const, label: 'Team attendance' }] : []),
+        ...(canViewAdmin ? [{ key: 'admin' as const, label: 'All records' }] : []),
       ],
-    [teamAccess?.canView]
+    [teamAccess?.canView, canViewAdmin]
   );
 
   useEffect(() => {
     if (activeTab === 'team' && !teamAccess?.canView) {
       setActiveTab('today');
     }
-  }, [activeTab, teamAccess?.canView]);
+    if (activeTab === 'admin' && !canViewAdmin) {
+      setActiveTab('today');
+    }
+  }, [activeTab, teamAccess?.canView, canViewAdmin]);
 
   return (
     <UserLayout title="Attendance" subtitle="Check in, view your history, and manage your team">
@@ -508,8 +574,13 @@ export const AttendancePage = () => {
       </div>
 
       {activeTab === 'today' ? <TodayPanel /> : null}
-      {activeTab === 'history' ? <HistoryPanel /> : null}
-      {activeTab === 'team' && teamAccess?.canView ? <TeamPanel teamAccess={teamAccess} /> : null}
+      {activeTab === 'history' ? <HistoryPanel canExport={canExport} /> : null}
+      {activeTab === 'team' && teamAccess?.canView ? (
+        <TeamPanel teamAccess={teamAccess} canExport={canExport} />
+      ) : null}
+      {activeTab === 'admin' && canViewAdmin ? (
+        permsLoading ? <div className="py-12 text-center text-muted">Loading...</div> : <AttendanceAdminPanel />
+      ) : null}
     </UserLayout>
   );
 };

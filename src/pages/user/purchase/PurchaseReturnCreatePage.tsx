@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { PurchaseReturnForm, emptyPurchaseReturnForm, formValuesToPurchaseReturnPayload } from './PurchaseReturnForm';
 import { purchaseReturnService } from '../../../services/trading.service';
 import { useTradingMasters } from './useTradingMasters';
+import { useTradingDocumentOptions } from './useTradingDocumentOptions';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useFormValidation } from '../../../hooks/useFormValidation';
@@ -24,6 +25,7 @@ export const PurchaseReturnCreatePage = () => {
   const [autoReturnNumber, setAutoReturnNumber] = useState(true);
   const { errors, clearFieldError, clearErrors, applyApiErrors } = useFormValidation<PurchaseReturnFormValues>();
   const masters = useTradingMasters();
+  const docOptions = useTradingDocumentOptions();
 
   useEffect(() => {
     if (!autoReturnNumber) return;
@@ -65,10 +67,11 @@ export const PurchaseReturnCreatePage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />Back to Purchase Returns
           </Button>
         </div>
-        {masters.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
+        {masters.isLoading || docOptions.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
           <PurchaseReturnForm mode="create" value={form} errors={errors} isSubmitting={isSubmitting}
             autoReturnNumber={autoReturnNumber} isGeneratingNumber={isGeneratingNumber}
             suppliers={masters.suppliers} warehouses={masters.warehouses} products={masters.products} taxes={masters.taxes}
+            grnOptions={docOptions.grns}
             onChange={setForm} onClearFieldError={clearFieldError} onAutoGenerateNumber={handleAutoGenerateNumber}
             onReturnNumberManualChange={() => setAutoReturnNumber(false)} onCancel={() => navigate(LIST_PATH)} onSubmit={handleSubmit} submitLabel="Save draft" />
         )}

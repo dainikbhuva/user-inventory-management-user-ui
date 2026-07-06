@@ -101,3 +101,19 @@ export interface MarkAttendancePayload {
   date: string;
   status: 'present' | 'absent';
 }
+
+export interface AttendanceSummary {
+  date: string;
+  totalEmployees: number;
+  presentToday: number;
+  absentToday: number;
+  lateToday: number;
+  halfDayToday: number;
+}
+
+export interface AttendanceListQuery {
+  from?: string;
+  to?: string;
+  userId?: string;
+  status?: AttendanceStatus;
+}

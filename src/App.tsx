@@ -120,6 +120,14 @@ function App() {
               }
             />
             <Route
+              path="/settings/inventory-suppliers/:id"
+              element={
+                <ActiveSubscriptionRoute>
+                  <P.SupplierViewPage />
+                </ActiveSubscriptionRoute>
+              }
+            />
+            <Route
               path="/products/new"
               element={
                 <ActiveSubscriptionRoute>
@@ -132,6 +140,14 @@ function App() {
               element={
                 <ActiveSubscriptionRoute>
                   <P.ProductEditPage />
+                </ActiveSubscriptionRoute>
+              }
+            />
+            <Route
+              path="/products/:id"
+              element={
+                <ActiveSubscriptionRoute>
+                  <P.ProductViewPage />
                 </ActiveSubscriptionRoute>
               }
             />
@@ -233,6 +249,7 @@ function App() {
             />
             <Route path="/settings/customers/new" element={<ActiveSubscriptionRoute><P.CustomerCreatePage /></ActiveSubscriptionRoute>} />
             <Route path="/settings/customers/:id/edit" element={<ActiveSubscriptionRoute><P.CustomerEditPage /></ActiveSubscriptionRoute>} />
+            <Route path="/settings/customers/:id" element={<ActiveSubscriptionRoute><P.CustomerViewPage /></ActiveSubscriptionRoute>} />
 
             <Route path="/purchase/purchase-orders" element={<ActiveSubscriptionRoute><P.PurchaseOrdersPage /></ActiveSubscriptionRoute>} />
             <Route path="/purchase/purchase-orders/new" element={<ActiveSubscriptionRoute><P.PurchaseOrderCreatePage /></ActiveSubscriptionRoute>} />

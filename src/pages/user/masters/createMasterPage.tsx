@@ -17,6 +17,7 @@ import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { exportTableCsv } from '../../../shared/utils/tableCsvExport';
 
 type MasterSortField = 'name' | 'code' | 'sortOrder' | 'status' | 'createdAt';
 
@@ -80,7 +81,7 @@ const getSortValue = (item: PortalMasterRecord, sortKey: string): string | numbe
 
 export const createMasterPage = (config: MasterPageConfig) => {
   const MasterPage = () => {
-    const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+    const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
       config.permission?.moduleCode,
       config.permission?.itemCode
     );
@@ -155,6 +156,21 @@ export const createMasterPage = (config: MasterPageConfig) => {
         setIsDeleting(false);
       }
     };
+
+    const handleExport = useCallback(() => {
+      if (table.exportRows.length === 0) {
+        toast.error('No records to export.');
+        return;
+      }
+      exportTableCsv(config.title, [
+        { header: 'Name', getValue: (row) => row.name },
+        { header: 'Code', getValue: (row) => row.code },
+        { header: 'Description', getValue: (row) => row.description ?? '' },
+        { header: 'Sort', getValue: (row) => row.sortOrder ?? 0 },
+        { header: 'Status', getValue: (row) => row.status },
+      ], table.exportRows);
+      toast.success('Export downloaded.');
+    }, [table.exportRows]);
 
     const columns: DataTableColumn<PortalMasterRecord>[] = useMemo(
       () => [
@@ -260,6 +276,9 @@ export const createMasterPage = (config: MasterPageConfig) => {
           onApply={table.handleApply}
           onReset={table.handleReset}
           isApplying={isLoading}
+          showExport={canExport}
+          onExport={handleExport}
+          exportDisabled={isLoading || table.exportRows.length === 0}
         >
           <SearchStatusFilters
             search={table.draftFilters.search}

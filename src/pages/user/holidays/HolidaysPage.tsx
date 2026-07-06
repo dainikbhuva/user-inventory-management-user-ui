@@ -20,6 +20,8 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 type HolidaySortField = 'name' | 'date' | 'holidayType' | 'status';
 
@@ -78,7 +80,7 @@ const toPayload = (data: HolidayFormData) => ({
 
 export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
   const M = PORTAL_PERMISSION_MODULES.holidays;
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     M.moduleCode,
     M.itemCode
   );
@@ -158,6 +160,7 @@ export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
         sortable: true,
         sortKey: 'name',
         render: (row) => <span className="font-medium text-body">{row.name}</span>,
+        csvValue: (row) => row.name,
       },
       {
         header: 'Date',
@@ -171,24 +174,28 @@ export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
             ) : null}
           </span>
         ),
+        csvValue: (row) => formatCsvDate(row.date),
       },
       {
         header: 'Type',
         sortable: true,
         sortKey: 'holidayType',
         render: (row) => <span className="text-sm text-muted">{row.holidayTypeLabel}</span>,
+        csvValue: (row) => row.holidayTypeLabel,
       },
       {
         header: 'Recurring',
         render: (row) => (
           <span className="text-sm text-muted">{row.isRecurring ? 'Yes' : 'No'}</span>
         ),
+        csvValue: (row) => (row.isRecurring ? 'Yes' : 'No'),
       },
       {
         header: 'Status',
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -224,6 +231,8 @@ export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
     [table.rowIndexOffset, canEdit, canDelete]
   );
 
+  const exportProps = useListTableExport('Holidays', columns, table.exportRows, canExport);
+
   const accessDenied = !permsLoading && !canView;
 
   const pageContent = accessDenied ? (
@@ -241,6 +250,8 @@ export const HolidaysPage = ({ embedded = false }: { embedded?: boolean }) => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">

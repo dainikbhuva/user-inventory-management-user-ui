@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { SalesInvoiceForm, emptySalesInvoiceForm, formValuesToSalesInvoicePayload } from './SalesInvoiceForm';
 import { salesInvoiceService } from '../../../services/trading.service';
 import { useTradingMasters } from '../purchase/useTradingMasters';
+import { useTradingDocumentOptions } from '../purchase/useTradingDocumentOptions';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useFormValidation } from '../../../hooks/useFormValidation';
@@ -24,6 +25,7 @@ export const SalesInvoiceCreatePage = () => {
   const [autoInvoiceNumber, setAutoInvoiceNumber] = useState(true);
   const { errors, clearFieldError, clearErrors, applyApiErrors } = useFormValidation<SalesInvoiceFormValues>();
   const masters = useTradingMasters();
+  const docOptions = useTradingDocumentOptions();
 
   useEffect(() => {
     if (!autoInvoiceNumber) return;
@@ -65,10 +67,11 @@ export const SalesInvoiceCreatePage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />Back to Invoices
           </Button>
         </div>
-        {masters.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
+        {masters.isLoading || docOptions.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
           <SalesInvoiceForm mode="create" value={form} errors={errors} isSubmitting={isSubmitting}
             autoInvoiceNumber={autoInvoiceNumber} isGeneratingNumber={isGeneratingNumber}
             customers={masters.customers} warehouses={masters.warehouses} products={masters.products} taxes={masters.taxes}
+            deliveryChallanOptions={docOptions.deliveryChallans} salesOrderOptions={docOptions.salesOrders}
             onChange={setForm} onClearFieldError={clearFieldError} onAutoGenerateNumber={handleAutoGenerateNumber}
             onInvoiceNumberManualChange={() => setAutoInvoiceNumber(false)} onCancel={() => navigate(LIST_PATH)} onSubmit={handleSubmit} submitLabel="Save draft" />
         )}

@@ -22,6 +22,8 @@ import {
   ANNOUNCEMENT_PRIORITY_STYLES,
   ANNOUNCEMENT_STATUS_LABELS,
 } from '../../../shared/constants/announcementAudience';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 type AnnouncementSortField = 'title' | 'startDate' | 'endDate' | 'priority' | 'status' | 'createdAt';
 
@@ -96,7 +98,7 @@ const AudienceCell = ({ row }: { row: PortalAnnouncementRecord }) => (
 
 export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) => {
   const M = PORTAL_PERMISSION_MODULES.announcements;
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     M.moduleCode,
     M.itemCode
   );
@@ -185,10 +187,15 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
             ) : null}
           </div>
         ),
+        csvValue: (row) => row.title,
       },
       {
         header: 'Audience',
         render: (row) => <AudienceCell row={row} />,
+        csvValue: (row) =>
+          row.audienceTargets.length > 0
+            ? `${row.audienceTypeLabel}: ${row.audienceTargets.map((t) => t.name).join(', ')}`
+            : row.audienceTypeLabel,
       },
       {
         header: 'Period',
@@ -199,6 +206,7 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
             {formatDisplayDate(row.startDate)} → {formatDisplayDate(row.endDate)}
           </span>
         ),
+        csvValue: (row) => `${formatCsvDate(row.startDate)} - ${formatCsvDate(row.endDate)}`,
       },
       {
         header: 'Priority',
@@ -211,6 +219,7 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
             {row.priorityLabel}
           </span>
         ),
+        csvValue: (row) => row.priorityLabel,
       },
       {
         header: 'Status',
@@ -219,6 +228,7 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
         render: (row) => (
           <span className="text-sm font-medium text-body">{ANNOUNCEMENT_STATUS_LABELS[row.status]}</span>
         ),
+        csvValue: (row) => ANNOUNCEMENT_STATUS_LABELS[row.status],
       },
       {
         header: 'Actions',
@@ -261,6 +271,8 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
     [table.rowIndexOffset, canEdit, canDelete]
   );
 
+  const exportProps = useListTableExport('Announcements', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView && !embedded) {
     return (
       <UserLayout title="Announcements" subtitle="Access restricted">
@@ -286,6 +298,8 @@ export const AnnouncementsPage = ({ embedded = false }: { embedded?: boolean }) 
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

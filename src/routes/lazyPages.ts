@@ -49,10 +49,13 @@ export const UserViewPage = lazyNamed(() => import('../pages/user/users/UserView
 // Masters & inventory
 export const SupplierCreatePage = lazyNamed(() => import('../pages/user/inventory-suppliers/SupplierCreatePage'), 'SupplierCreatePage');
 export const SupplierEditPage = lazyNamed(() => import('../pages/user/inventory-suppliers/SupplierEditPage'), 'SupplierEditPage');
+export const SupplierViewPage = lazyNamed(() => import('../pages/user/inventory-suppliers/SupplierViewPage'), 'SupplierViewPage');
 export const ProductCreatePage = lazyNamed(() => import('../pages/user/inventory-products/ProductCreatePage'), 'ProductCreatePage');
+export const ProductViewPage = lazyNamed(() => import('../pages/user/inventory-products/ProductViewPage'), 'ProductViewPage');
 export const ProductEditPage = lazyNamed(() => import('../pages/user/inventory-products/ProductEditPage'), 'ProductEditPage');
 export const CustomerCreatePage = lazyNamed(() => import('../pages/user/customers/CustomerCreatePage'), 'CustomerCreatePage');
 export const CustomerEditPage = lazyNamed(() => import('../pages/user/customers/CustomerEditPage'), 'CustomerEditPage');
+export const CustomerViewPage = lazyNamed(() => import('../pages/user/customers/CustomerViewPage'), 'CustomerViewPage');
 
 // Stock
 export const StockInCreatePage = lazyNamed(() => import('../pages/user/stock-movements/StockMovementCreatePage'), 'StockInCreatePage');

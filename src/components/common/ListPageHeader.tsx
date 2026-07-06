@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { TableExportButton } from './TableExportButton'
 import { TableFilterToggle } from './TableFilterToggle'
 
 interface ListPageHeaderProps {
@@ -12,6 +13,9 @@ interface ListPageHeaderProps {
   onFilterToggle: () => void
   activeFilterCount: number
   showAdd?: boolean
+  showExport?: boolean
+  onExport?: () => void
+  exportDisabled?: boolean
   extraActions?: ReactNode
 }
 
@@ -24,6 +28,9 @@ export const ListPageHeader = ({
   onFilterToggle,
   activeFilterCount,
   showAdd = true,
+  showExport = false,
+  onExport,
+  exportDisabled,
   extraActions,
 }: ListPageHeaderProps) => (
   <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -34,6 +41,9 @@ export const ListPageHeader = ({
 
     <div className="flex items-center gap-2 shrink-0">
       {extraActions}
+      {showExport && onExport ? (
+        <TableExportButton onClick={onExport} disabled={exportDisabled} />
+      ) : null}
       <TableFilterToggle
         open={filterOpen}
         onToggle={onFilterToggle}

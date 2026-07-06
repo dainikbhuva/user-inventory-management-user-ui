@@ -18,6 +18,7 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 type ShiftSortField = 'name' | 'code' | 'startTime' | 'status';
 
@@ -69,7 +70,7 @@ const getShiftSortValue = (item: PortalShiftRecord, sortKey: string): string | n
 
 export const ShiftDefinitionsPanel = () => {
   const M = PORTAL_PERMISSION_MODULES.shifts;
-  const { canView, canCreate, canEdit, canDelete } = useModulePermissions(M.moduleCode, M.itemCode);
+  const { canView, canCreate, canEdit, canDelete, canExport } = useModulePermissions(M.moduleCode, M.itemCode);
 
   const [shifts, setShifts] = useState<PortalShiftRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,12 +146,14 @@ export const ShiftDefinitionsPanel = () => {
         sortable: true,
         sortKey: 'name',
         render: (row) => <span className="font-medium text-body">{row.name}</span>,
+        csvValue: (row) => row.name,
       },
       {
         header: 'Code',
         sortable: true,
         sortKey: 'code',
         render: (row) => <span className="font-mono text-xs text-muted">{row.code}</span>,
+        csvValue: (row) => row.code,
       },
       {
         header: 'Hours',
@@ -162,16 +165,20 @@ export const ShiftDefinitionsPanel = () => {
             {row.crossesMidnight ? ' (overnight)' : ''}
           </span>
         ),
+        csvValue: (row) =>
+          `${row.startTime} - ${row.endTime}${row.crossesMidnight ? ' (overnight)' : ''}`,
       },
       {
         header: 'Late after',
         render: (row) => <span className="text-sm text-muted">{row.lateAfterMinutes} min</span>,
+        csvValue: (row) => row.lateAfterMinutes,
       },
       {
         header: 'Status',
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -207,6 +214,8 @@ export const ShiftDefinitionsPanel = () => {
     [table.rowIndexOffset, canEdit, canDelete]
   );
 
+  const exportProps = useListTableExport('Shift templates', shiftColumns, table.exportRows, canExport);
+
   if (!canView) {
     return <AccessDeniedPanel moduleLabel="Shifts" compact />;
   }
@@ -224,6 +233,8 @@ export const ShiftDefinitionsPanel = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

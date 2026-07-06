@@ -14,12 +14,14 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const PERM = PORTAL_PERMISSION_MODULES.stockLedger;
 
 export const StockLedgerPage = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
-  const { canView, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? PERM.moduleCode,
     itemCode ?? PERM.itemCode
   );
@@ -57,18 +59,20 @@ export const StockLedgerPage = () => {
 
   const columns: DataTableColumn<StockLedgerRecord>[] = useMemo(
     () => [
-      { header: 'Date', sortable: true, sortKey: 'transactionDate', render: (r) => r.transactionDate },
-      { header: 'Type', sortable: true, sortKey: 'transactionType', render: (r) => <span className="font-mono text-xs">{r.transactionType}</span> },
-      { header: 'Reference', render: (r) => <span className="font-mono text-sm">{r.referenceNumber}</span> },
-      { header: 'Product', render: (r) => r.product.name },
-      { header: 'Warehouse', render: (r) => r.warehouse.name },
-      { header: 'In', align: 'right', render: (r) => <span className="tabular-nums text-emerald-600">{r.qtyIn || '—'}</span> },
-      { header: 'Out', align: 'right', render: (r) => <span className="tabular-nums text-red-500">{r.qtyOut || '—'}</span> },
-      { header: 'Balance', align: 'right', render: (r) => <span className="tabular-nums font-medium">{r.balanceQty}</span> },
-      { header: 'By', render: (r) => r.createdBy.name },
+      { header: 'Date', sortable: true, sortKey: 'transactionDate', render: (r) => r.transactionDate, csvValue: (r) => formatCsvDate(r.transactionDate) },
+      { header: 'Type', sortable: true, sortKey: 'transactionType', render: (r) => <span className="font-mono text-xs">{r.transactionType}</span>, csvValue: (r) => r.transactionType },
+      { header: 'Reference', render: (r) => <span className="font-mono text-sm">{r.referenceNumber}</span>, csvValue: (r) => r.referenceNumber },
+      { header: 'Product', render: (r) => r.product.name, csvValue: (r) => r.product.name },
+      { header: 'Warehouse', render: (r) => r.warehouse.name, csvValue: (r) => r.warehouse.name },
+      { header: 'In', align: 'right', render: (r) => <span className="tabular-nums text-emerald-600">{r.qtyIn || '—'}</span>, csvValue: (r) => r.qtyIn ?? '' },
+      { header: 'Out', align: 'right', render: (r) => <span className="tabular-nums text-red-500">{r.qtyOut || '—'}</span>, csvValue: (r) => r.qtyOut ?? '' },
+      { header: 'Balance', align: 'right', render: (r) => <span className="tabular-nums font-medium">{r.balanceQty}</span>, csvValue: (r) => r.balanceQty },
+      { header: 'By', render: (r) => r.createdBy.name, csvValue: (r) => r.createdBy.name },
     ],
     []
   );
+
+  const exportProps = useListTableExport('Stock Ledger', columns, table.exportRows, canExport);
 
   if (!permsLoading && !canView) {
     return (
@@ -90,6 +94,8 @@ export const StockLedgerPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

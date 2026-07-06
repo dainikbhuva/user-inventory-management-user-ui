@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { UserSidebar } from './Sidebar';
 import { UserHeader } from './Header';
+import { AppAssistantWidget } from '../assistant/AppAssistantWidget';
 
 interface UserLayoutProps {
   children: ReactNode;
@@ -60,6 +61,7 @@ export const UserLayout = ({ children, title = 'Dashboard', subtitle }: UserLayo
           {children}
         </main>
       </div>
+      <AppAssistantWidget />
     </div>
   );
 };

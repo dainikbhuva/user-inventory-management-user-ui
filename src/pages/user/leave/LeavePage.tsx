@@ -19,6 +19,9 @@ import { useClientDataTable } from '../../../hooks/useClientDataTable';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { TableExportButton } from '../../../components/common/TableExportButton';
+import { useCsvExport } from '../../../hooks/useCsvExport';
+import { leaveMyCsvColumns, leaveTeamCsvColumns } from '../../../shared/utils/leaveCsvExport';
 
 type TabKey = 'my' | 'approvals';
 type LeaveSortField = 'employee' | 'leaveType' | 'startDate' | 'totalDays' | 'status';
@@ -48,7 +51,7 @@ const getSortValue = (item: PortalLeaveRequestRecord, sortKey: string): string |
 export const LeavePage = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
   const M = PORTAL_PERMISSION_MODULES.leave;
-  const { canView, canCreate, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? M.moduleCode,
     itemCode ?? M.itemCode
   );
@@ -92,6 +95,19 @@ export const LeavePage = () => {
     getSortValue: useCallback(getSortValue, []),
     defaultSortBy: 'startDate',
   });
+
+  useEffect(() => {
+    table.setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset pagination when tab filter changes
+  }, [activeTab]);
+
+  const leaveCsvColumns = activeTab === 'approvals' ? leaveTeamCsvColumns : leaveMyCsvColumns;
+  const exportProps = useCsvExport(
+    activeTab === 'approvals' ? 'Team Leave Approvals' : 'My Leave',
+    leaveCsvColumns,
+    table.exportRows,
+    canExport
+  );
 
   const refreshLeaves = useCallback(async () => {
     const leaveResult = await leaveService.getAll();
@@ -331,7 +347,14 @@ export const LeavePage = () => {
             You apply leave → your reporting manager approves → HR approves (same department).
           </p>
         </div>
-        {canCreate ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {exportProps.showExport ? (
+            <TableExportButton
+              onClick={exportProps.onExport}
+              disabled={isLoading || exportProps.exportDisabled}
+            />
+          ) : null}
+          {canCreate ? (
         <button
           type="button"
           onClick={() => setIsAddOpen(true)}
@@ -341,6 +364,7 @@ export const LeavePage = () => {
           Apply Leave
         </button>
         ) : null}
+        </div>
       </div>
 
       <div className="mb-4 flex gap-2 border-b border-base">

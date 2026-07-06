@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { ManufacturingStatusBadge } from '../manufacturing/ManufacturingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/manufacturing/work-orders';
 const PERM = PORTAL_PERMISSION_MODULES.workOrders;
@@ -25,7 +27,7 @@ const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-IN') 
 
 export const WorkOrdersPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<WorkOrderRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<WorkOrderRecord | null>(null);
@@ -67,12 +69,12 @@ export const WorkOrdersPage = () => {
   const columns: DataTableColumn<WorkOrderRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_row, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'WO #', width: '14%', sortable: true, sortKey: 'workOrderNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.workOrderNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'workOrderDate', render: (row) => formatDate(row.workOrderDate) },
-    { header: 'Planned Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.plannedQty}</span> },
-    { header: 'Produced', width: '10%', align: 'right', render: (row) => <span className="tabular-nums text-muted">{row.producedQty}</span> },
-    { header: 'Scheduled', width: '12%', render: (row) => formatDate(row.scheduledDate) },
-    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.workOrderNumber}</button>, csvValue: (row) => row.workOrderNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'workOrderDate', render: (row) => formatDate(row.workOrderDate), csvValue: (row) => formatCsvDate(row.workOrderDate) },
+    { header: 'Planned Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.plannedQty}</span>, csvValue: (row) => row.plannedQty },
+    { header: 'Produced', width: '10%', align: 'right', render: (row) => <span className="tabular-nums text-muted">{row.producedQty}</span>, csvValue: (row) => row.producedQty },
+    { header: 'Scheduled', width: '12%', render: (row) => formatDate(row.scheduledDate), csvValue: (row) => formatCsvDate(row.scheduledDate) },
+    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '12%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -91,6 +93,8 @@ export const WorkOrdersPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Work Orders', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Work Orders" subtitle="Plan and track production runs."><AccessDeniedPanel moduleLabel="Work Orders" /></UserLayout>;
   }
@@ -108,6 +112,8 @@ export const WorkOrdersPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

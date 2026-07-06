@@ -43,9 +43,23 @@ export const SettingsBillingPage = () => {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [mode, setMode] = useState<'upgrade' | 'renew'>('upgrade');
+  const [paymentHistory, setPaymentHistory] = useState<
+    Array<{ _id: string; amount: number; status: string; createdAt: string; planId?: { name?: string } }>
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
   const seats = Number(seatCount) || PLAN_MIN_USERS;
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    setHistoryLoading(true);
+    paymentService
+      .getHistory()
+      .then((res) => setPaymentHistory(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setPaymentHistory([]))
+      .finally(() => setHistoryLoading(false));
+  }, [isSuperAdmin]);
   const minSeats = Math.max(
     selectedPlan?.minUsers ?? PLAN_MIN_USERS,
     subscription?.activeUserCount ?? PLAN_MIN_USERS,
@@ -439,6 +453,41 @@ export const SettingsBillingPage = () => {
           Only Super Admin can renew or upgrade the company plan. Contact your administrator.
         </div>
       )}
+
+      {isSuperAdmin ? (
+        <div className="rounded-sm border border-base bg-surface p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-body">Payment history</h3>
+          <p className="mt-1 text-xs text-muted">Recent subscription payments for this company.</p>
+          {historyLoading ? (
+            <p className="mt-4 text-sm text-muted">Loading payment history...</p>
+          ) : paymentHistory.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">No payments recorded yet.</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-base text-left text-xs uppercase tracking-wide text-muted">
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Plan</th>
+                    <th className="px-3 py-2">Amount</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentHistory.map((row) => (
+                    <tr key={row._id} className="border-b border-base last:border-b-0">
+                      <td className="px-3 py-2 text-muted">{formatDate(row.createdAt)}</td>
+                      <td className="px-3 py-2">{row.planId?.name ?? '—'}</td>
+                      <td className="px-3 py-2">{formatMoney(row.amount)}</td>
+                      <td className="px-3 py-2 capitalize">{row.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };

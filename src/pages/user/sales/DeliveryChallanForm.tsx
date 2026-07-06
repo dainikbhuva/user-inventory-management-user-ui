@@ -6,6 +6,7 @@ import { FormField } from '../../../components/ui/FormField';
 import { Select } from '../../../components/ui/Select';
 import { DateInput } from '../../../components/ui/DateInput';
 import { TradingLinesEditor } from '../trading/TradingLinesEditor';
+import { TradingDocumentSelect, type TradingDocumentOption } from '../../../components/trading/TradingDocumentSelect';
 import type { DeliveryChallanFormValues, DeliveryChallanRecord, TradingLineFormValues, CustomerRecord } from '../../../shared/types/trading.types';
 import type { InventoryWarehouseRecord, InventoryTaxRecord } from '../../../shared/types/inventoryMaster.types';
 import type { InventoryProductRecord } from '../../../shared/types/inventoryProduct.types';
@@ -21,6 +22,7 @@ interface DeliveryChallanFormProps {
   warehouses: InventoryWarehouseRecord[];
   products: InventoryProductRecord[];
   taxes: InventoryTaxRecord[];
+  salesOrderOptions?: TradingDocumentOption[];
   onChange: (value: DeliveryChallanFormValues) => void;
   onClearFieldError?: (field: keyof DeliveryChallanFormValues) => void;
   onAutoGenerateNumber?: () => void;
@@ -94,7 +96,7 @@ export const formValuesToDcPayload = (v: DeliveryChallanFormValues, opts?: { aut
 
 export const DeliveryChallanForm = ({
   mode, value, errors, isSubmitting = false, autoDcNumber = false, isGeneratingNumber = false,
-  customers, warehouses, products, taxes, onChange, onClearFieldError, onAutoGenerateNumber,
+  customers, warehouses, products, taxes, salesOrderOptions = [], onChange, onClearFieldError, onAutoGenerateNumber,
   onDcNumberManualChange, onCancel, onSubmit, submitLabel,
 }: DeliveryChallanFormProps) => {
   const set = (field: keyof DeliveryChallanFormValues, val: string) => {
@@ -136,7 +138,13 @@ export const DeliveryChallanForm = ({
             </Select>
           </FormField>
           <FormField label="Sales Order (optional)" error={fieldError('salesOrderId')}>
-            <Input value={value.salesOrderId} placeholder="Sales order ID" error={Boolean(fieldError('salesOrderId'))} onChange={(e) => set('salesOrderId', e.target.value)} />
+            <TradingDocumentSelect
+              value={value.salesOrderId}
+              options={salesOrderOptions}
+              placeholder="— Select sales order —"
+              error={Boolean(fieldError('salesOrderId'))}
+              onChange={(next) => set('salesOrderId', next)}
+            />
           </FormField>
           <FormField label="Reference No." error={fieldError('referenceNo')}>
             <Input value={value.referenceNo} placeholder="Ref / LR number" error={Boolean(fieldError('referenceNo'))} onChange={(e) => set('referenceNo', e.target.value)} />

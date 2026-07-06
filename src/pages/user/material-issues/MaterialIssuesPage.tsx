@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { ManufacturingStatusBadge } from '../manufacturing/ManufacturingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/manufacturing/material-issues';
 const PERM = PORTAL_PERMISSION_MODULES.materialIssues;
@@ -25,7 +27,7 @@ const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-IN') 
 
 export const MaterialIssuesPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<MaterialIssueRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<MaterialIssueRecord | null>(null);
@@ -67,10 +69,10 @@ export const MaterialIssuesPage = () => {
   const columns: DataTableColumn<MaterialIssueRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_row, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'Issue #', width: '14%', sortable: true, sortKey: 'issueNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.issueNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'issueDate', render: (row) => formatDate(row.issueDate) },
-    { header: 'Items', width: '8%', align: 'center', render: (row) => <span className="text-muted">{row.lines.length}</span> },
-    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.issueNumber}</button>, csvValue: (row) => row.issueNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'issueDate', render: (row) => formatDate(row.issueDate), csvValue: (row) => formatCsvDate(row.issueDate) },
+    { header: 'Items', width: '8%', align: 'center', render: (row) => <span className="text-muted">{row.lines.length}</span>, csvValue: (row) => row.lines.length },
+    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '12%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -89,6 +91,8 @@ export const MaterialIssuesPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Material Issues', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Material Issues" subtitle="Issue raw materials for production."><AccessDeniedPanel moduleLabel="Material Issues" /></UserLayout>;
   }
@@ -106,6 +110,8 @@ export const MaterialIssuesPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

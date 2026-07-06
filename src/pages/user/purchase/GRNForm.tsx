@@ -6,6 +6,7 @@ import { FormField } from '../../../components/ui/FormField';
 import { Select } from '../../../components/ui/Select';
 import { DateInput } from '../../../components/ui/DateInput';
 import { TradingLinesEditor } from '../trading/TradingLinesEditor';
+import { TradingDocumentSelect, type TradingDocumentOption } from '../../../components/trading/TradingDocumentSelect';
 import type { GRNFormValues, TradingLineFormValues } from '../../../shared/types/trading.types';
 import type { InventorySupplierRecord, InventoryWarehouseRecord, InventoryTaxRecord } from '../../../shared/types/inventoryMaster.types';
 import type { InventoryProductRecord } from '../../../shared/types/inventoryProduct.types';
@@ -21,6 +22,8 @@ interface GRNFormProps {
   warehouses: InventoryWarehouseRecord[];
   products: InventoryProductRecord[];
   taxes: InventoryTaxRecord[];
+  purchaseOrderOptions?: TradingDocumentOption[];
+  onPurchaseOrderChange?: (purchaseOrderId: string) => void;
   onChange: (value: GRNFormValues) => void;
   onClearFieldError?: (field: keyof GRNFormValues) => void;
   onAutoGenerateNumber?: () => void;
@@ -95,7 +98,7 @@ export const formValuesToGrnPayload = (v: GRNFormValues, opts?: { autoGenerateGr
 
 export const GRNForm = ({
   mode, value, errors, isSubmitting = false, autoGrnNumber = false, isGeneratingNumber = false,
-  suppliers, warehouses, products, taxes, onChange, onClearFieldError, onAutoGenerateNumber,
+  suppliers, warehouses, products, taxes, purchaseOrderOptions = [], onPurchaseOrderChange, onChange, onClearFieldError, onAutoGenerateNumber,
   onGrnNumberManualChange, onCancel, onSubmit, submitLabel,
 }: GRNFormProps) => {
   const set = (field: keyof GRNFormValues, val: string) => {
@@ -137,7 +140,16 @@ export const GRNForm = ({
             </Select>
           </FormField>
           <FormField label="Purchase Order (optional)" error={fieldError('purchaseOrderId')}>
-            <Input value={value.purchaseOrderId} placeholder="Purchase order ID" error={Boolean(fieldError('purchaseOrderId'))} onChange={(e) => set('purchaseOrderId', e.target.value)} />
+            <TradingDocumentSelect
+              value={value.purchaseOrderId}
+              options={purchaseOrderOptions}
+              placeholder="— Select purchase order —"
+              error={Boolean(fieldError('purchaseOrderId'))}
+              onChange={(next) => {
+                set('purchaseOrderId', next);
+                onPurchaseOrderChange?.(next);
+              }}
+            />
           </FormField>
           <FormField label="Reference No." error={fieldError('referenceNo')}>
             <Input value={value.referenceNo} placeholder="Invoice / Bill ref" error={Boolean(fieldError('referenceNo'))} onChange={(e) => set('referenceNo', e.target.value)} />

@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { DeliveryChallanForm, emptyDeliveryChallanForm, formValuesToDcPayload } from './DeliveryChallanForm';
 import { deliveryChallanService } from '../../../services/trading.service';
 import { useTradingMasters } from '../purchase/useTradingMasters';
+import { useTradingDocumentOptions } from '../purchase/useTradingDocumentOptions';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useFormValidation } from '../../../hooks/useFormValidation';
@@ -24,6 +25,7 @@ export const DeliveryChallanCreatePage = () => {
   const [autoDcNumber, setAutoDcNumber] = useState(true);
   const { errors, clearFieldError, clearErrors, applyApiErrors } = useFormValidation<DeliveryChallanFormValues>();
   const masters = useTradingMasters();
+  const docOptions = useTradingDocumentOptions();
 
   useEffect(() => {
     if (!autoDcNumber) return;
@@ -65,10 +67,11 @@ export const DeliveryChallanCreatePage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />Back to Challans
           </Button>
         </div>
-        {masters.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
+        {masters.isLoading || docOptions.isLoading ? <div className="flex h-64 items-center justify-center text-muted">Loading...</div> : (
           <DeliveryChallanForm mode="create" value={form} errors={errors} isSubmitting={isSubmitting}
             autoDcNumber={autoDcNumber} isGeneratingNumber={isGeneratingNumber}
             customers={masters.customers} warehouses={masters.warehouses} products={masters.products} taxes={masters.taxes}
+            salesOrderOptions={docOptions.salesOrders}
             onChange={setForm} onClearFieldError={clearFieldError} onAutoGenerateNumber={handleAutoGenerateNumber}
             onDcNumberManualChange={() => setAutoDcNumber(false)} onCancel={() => navigate(LIST_PATH)} onSubmit={handleSubmit} submitLabel="Save draft" />
         )}

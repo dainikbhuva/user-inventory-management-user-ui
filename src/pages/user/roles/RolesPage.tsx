@@ -20,6 +20,8 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 type RoleSortField = 'name' | 'code' | 'type' | 'status' | 'createdAt';
 
@@ -48,7 +50,7 @@ export const RolesPage = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
   const permMod = moduleCode ?? PORTAL_PERMISSION_MODULES.roles.moduleCode;
   const permItem = itemCode ?? PORTAL_PERMISSION_MODULES.roles.itemCode;
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     permMod,
     permItem
   );
@@ -140,6 +142,7 @@ export const RolesPage = () => {
         sortable: true,
         sortKey: 'name',
         render: (row) => <span className="font-medium text-body">{row.name}</span>,
+        csvValue: (row) => row.name,
       },
       {
         header: 'Code',
@@ -148,6 +151,7 @@ export const RolesPage = () => {
         sortable: true,
         sortKey: 'code',
         render: (row) => <span className="font-mono text-sm text-muted">{row.code}</span>,
+        csvValue: (row) => row.code,
       },
       {
         header: 'Type',
@@ -159,6 +163,7 @@ export const RolesPage = () => {
             {row.code === 'super_admin' ? 'Protected' : 'Company'}
           </span>
         ),
+        csvValue: (row) => (row.code === 'super_admin' ? 'Protected' : 'Company'),
       },
       {
         header: 'Status',
@@ -167,6 +172,7 @@ export const RolesPage = () => {
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Created',
@@ -179,6 +185,7 @@ export const RolesPage = () => {
             {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}
           </span>
         ),
+        csvValue: (row) => formatCsvDate(row.createdAt),
       },
       {
         header: 'Actions',
@@ -220,6 +227,8 @@ export const RolesPage = () => {
     [table.rowIndexOffset, canEdit, canDelete]
   );
 
+  const exportProps = useListTableExport('Roles', columns, table.exportRows, canExport);
+
   const isFormOpen = isAddOpen || Boolean(editing);
 
   if (!permsLoading && !canView) {
@@ -250,6 +259,8 @@ export const RolesPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

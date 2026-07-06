@@ -14,6 +14,9 @@ interface TableListToolbarProps {
   onApply: () => void
   onReset: () => void
   isApplying?: boolean
+  showExport?: boolean
+  onExport?: () => void
+  exportDisabled?: boolean
   extraActions?: ReactNode
   children: ReactNode
 }
@@ -30,6 +33,9 @@ export const TableListToolbar = ({
   onApply,
   onReset,
   isApplying,
+  showExport,
+  onExport,
+  exportDisabled,
   extraActions,
   children,
 }: TableListToolbarProps) => (
@@ -43,6 +49,9 @@ export const TableListToolbar = ({
       filterOpen={filterOpen}
       onFilterToggle={onFilterToggle}
       activeFilterCount={activeFilterCount}
+      showExport={showExport}
+      onExport={onExport}
+      exportDisabled={exportDisabled}
       extraActions={extraActions}
     />
     <TableFilterPanel

@@ -3,7 +3,9 @@ import { API_ENDPOINTS } from './api/endpoints';
 import type { ApiResponse } from '../shared/types/api.types';
 import type {
   AttendanceSettings,
+  AttendanceSummary,
   AttendanceTeamAccess,
+  AttendanceListQuery,
   DailyAttendanceSheet,
   MarkAttendancePayload,
   MyTodayAttendance,
@@ -57,6 +59,31 @@ export const attendanceService = {
 
   async markStatus(payload: MarkAttendancePayload): Promise<void> {
     await axiosClient.put(API_ENDPOINTS.ATTENDANCE.MARK, payload);
+  },
+
+  async getRecords(filters: AttendanceListQuery = {}): Promise<PortalAttendanceRecord[]> {
+    const params = new URLSearchParams();
+    if (filters.from) params.set('from', filters.from);
+    if (filters.to) params.set('to', filters.to);
+    if (filters.userId) params.set('userId', filters.userId);
+    if (filters.status) params.set('status', filters.status);
+    const query = params.toString();
+    const response = await axiosClient.get<ApiResponse<{ items: PortalAttendanceRecord[] }>>(
+      `${API_ENDPOINTS.ATTENDANCE.LIST}${query ? `?${query}` : ''}`
+    );
+    return response.data.data!.items;
+  },
+
+  async getSummary(date?: string): Promise<AttendanceSummary> {
+    const query = date ? `?date=${encodeURIComponent(date)}` : '';
+    const response = await axiosClient.get<ApiResponse<AttendanceSummary>>(
+      `${API_ENDPOINTS.ATTENDANCE.SUMMARY}${query}`
+    );
+    return response.data.data!;
+  },
+
+  async deleteRecord(id: string): Promise<void> {
+    await axiosClient.delete(API_ENDPOINTS.ATTENDANCE.BY_ID(id));
   },
 
   async getSettings(): Promise<AttendanceSettings> {

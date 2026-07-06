@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { ManufacturingStatusBadge } from '../manufacturing/ManufacturingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/manufacturing/production-entries';
 const PERM = PORTAL_PERMISSION_MODULES.productionEntries;
@@ -25,7 +27,7 @@ const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-IN') 
 
 export const ProductionEntriesPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<ProductionEntryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<ProductionEntryRecord | null>(null);
@@ -67,10 +69,10 @@ export const ProductionEntriesPage = () => {
   const columns: DataTableColumn<ProductionEntryRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_row, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'Entry #', width: '14%', sortable: true, sortKey: 'entryNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.entryNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'entryDate', render: (row) => formatDate(row.entryDate) },
-    { header: 'Produced Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.producedQty}</span> },
-    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.entryNumber}</button>, csvValue: (row) => row.entryNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'entryDate', render: (row) => formatDate(row.entryDate), csvValue: (row) => formatCsvDate(row.entryDate) },
+    { header: 'Produced Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.producedQty}</span>, csvValue: (row) => row.producedQty },
+    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '12%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -89,6 +91,8 @@ export const ProductionEntriesPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Production Entries', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Production Entries" subtitle="Record finished goods produced."><AccessDeniedPanel moduleLabel="Production Entries" /></UserLayout>;
   }
@@ -106,6 +110,8 @@ export const ProductionEntriesPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

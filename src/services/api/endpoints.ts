@@ -59,6 +59,7 @@ export const API_ENDPOINTS = {
   },
   ATTENDANCE: {
     LIST: '/app/attendance',
+    SUMMARY: '/app/attendance/summary',
     MY_TODAY: '/app/attendance/my-today',
     MY_RECORDS: '/app/attendance/my-records',
     TEAM_ACCESS: '/app/attendance/team-access',
@@ -248,6 +249,9 @@ export const API_ENDPOINTS = {
     CHECKOUT: '/app/payments/checkout',
     VERIFY: '/app/payments/verify',
     HISTORY: '/app/payments/history',
+  },
+  ASSISTANT: {
+    CHAT: '/app/assistant/chat',
   },
 } as const;
 

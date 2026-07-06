@@ -60,6 +60,10 @@ const warehouseConfig = {
       ),
     },
   ],
+  exportExtraColumns: [
+    { header: 'Address', getValue: (row) => row.address ?? '' },
+    { header: 'Sort', getValue: (row) => row.sortOrder ?? 0 },
+  ],
 };
 
 export const InventoryWarehousesPage = createExtendedMasterPage(warehouseConfig);

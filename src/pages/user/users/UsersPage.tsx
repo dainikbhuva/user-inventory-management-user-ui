@@ -19,6 +19,7 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useAuth } from '../../../shared/auth/useAuth';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 type UserSortField =
   | 'name'
@@ -76,7 +77,7 @@ export const UsersPage = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode: string; itemCode: string }>();
   const basePath = `/${moduleCode}/${itemCode}`;
   const { user: authUser } = useAuth();
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode,
     itemCode
   );
@@ -142,6 +143,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'employeeCode',
         render: (row) => <span className="font-mono text-xs text-muted">{row.employeeCode}</span>,
+        csvValue: (row) => row.employeeCode,
       },
       {
         header: 'Name',
@@ -149,6 +151,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'name',
         render: (row) => <span className="font-medium text-body">{row.name}</span>,
+        csvValue: (row) => row.name,
       },
       {
         header: 'Email',
@@ -156,6 +159,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'email',
         render: (row) => <span className="text-sm text-muted">{row.email}</span>,
+        csvValue: (row) => row.email,
       },
       {
         header: 'Role',
@@ -163,6 +167,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'role',
         render: (row) => <span className="text-sm text-body">{row.role.name}</span>,
+        csvValue: (row) => row.role.name,
       },
       {
         header: 'Emp. type',
@@ -172,6 +177,7 @@ export const UsersPage = () => {
         render: (row) => (
           <span className="text-sm text-muted">{getEmployeeTypeLabel(row.employeeType)}</span>
         ),
+        csvValue: (row) => getEmployeeTypeLabel(row.employeeType),
       },
       {
         header: 'Reporting manager',
@@ -181,6 +187,7 @@ export const UsersPage = () => {
         render: (row) => (
           <span className="text-sm text-muted">{row.reportingManager?.name ?? '—'}</span>
         ),
+        csvValue: (row) => row.reportingManager?.name ?? '',
       },
       {
         header: 'Department',
@@ -188,6 +195,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'department',
         render: (row) => <span className="text-sm text-muted">{row.department || '—'}</span>,
+        csvValue: (row) => row.department ?? '',
       },
       {
         header: 'Status',
@@ -195,6 +203,7 @@ export const UsersPage = () => {
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -239,6 +248,8 @@ export const UsersPage = () => {
     [table.rowIndexOffset, navigate, basePath, canView, canEdit, canDelete, authUser?.id]
   );
 
+  const exportProps = useListTableExport('Users', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Users" subtitle="Access restricted">
@@ -260,6 +271,8 @@ export const UsersPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

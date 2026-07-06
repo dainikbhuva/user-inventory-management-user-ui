@@ -19,6 +19,7 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 type LeaveTypeSortField = 'name' | 'code' | 'maxDaysPerYear' | 'sortOrder' | 'status';
 
@@ -64,7 +65,7 @@ const toPayload = (data: LeaveTypeFormData) => ({
 
 export const LeaveTypesPage = ({ embedded = false }: { embedded?: boolean }) => {
   const M = PORTAL_PERMISSION_MODULES.leaveTypes;
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     M.moduleCode,
     M.itemCode
   );
@@ -143,12 +144,14 @@ export const LeaveTypesPage = ({ embedded = false }: { embedded?: boolean }) => 
         sortable: true,
         sortKey: 'name',
         render: (row) => <span className="font-medium text-body">{row.name}</span>,
+        csvValue: (row) => row.name,
       },
       {
         header: 'Code',
         sortable: true,
         sortKey: 'code',
         render: (row) => <span className="font-mono text-xs text-muted">{row.code}</span>,
+        csvValue: (row) => row.code,
       },
       {
         header: 'Annual allocation',
@@ -158,18 +161,24 @@ export const LeaveTypesPage = ({ embedded = false }: { embedded?: boolean }) => 
           const days = row.annualAllocation ?? row.maxDaysPerYear ?? 0;
           return <span className="text-sm text-muted">{days > 0 ? days : 'Unlimited'}</span>;
         },
+        csvValue: (row) => {
+          const days = row.annualAllocation ?? row.maxDaysPerYear ?? 0;
+          return days > 0 ? days : 'Unlimited';
+        },
       },
       {
         header: 'Sort',
         sortable: true,
         sortKey: 'sortOrder',
         render: (row) => <span className="text-sm text-muted">{row.sortOrder}</span>,
+        csvValue: (row) => row.sortOrder ?? 0,
       },
       {
         header: 'Status',
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -205,6 +214,8 @@ export const LeaveTypesPage = ({ embedded = false }: { embedded?: boolean }) => 
     [table.rowIndexOffset, canEdit, canDelete]
   );
 
+  const exportProps = useListTableExport('Leave Types', columns, table.exportRows, canExport);
+
   const accessDenied = !permsLoading && !canView;
 
   const pageContent = accessDenied ? (
@@ -222,6 +233,8 @@ export const LeaveTypesPage = ({ embedded = false }: { embedded?: boolean }) => 
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

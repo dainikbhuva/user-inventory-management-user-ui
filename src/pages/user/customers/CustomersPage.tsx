@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Eye } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
 import { Pagination } from '../../../components/common/Pagination';
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable';
@@ -18,13 +18,14 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 const LIST_PATH = '/settings/customers';
 const PERM = PORTAL_PERMISSION_MODULES.customers;
 
 const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
   const navigate = useNavigate();
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     PERM.moduleCode,
     PERM.itemCode
   );
@@ -106,28 +107,41 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
         sortable: true,
         sortKey: 'customerCode',
         render: (row) => <span className="font-mono text-sm text-body">{row.customerCode}</span>,
+        csvValue: (row) => row.customerCode,
       },
       {
         header: 'Customer name',
         width: '20%',
         sortable: true,
         sortKey: 'customerName',
-        render: (row) => <span className="font-medium text-body">{row.customerName}</span>,
+        render: (row) => (
+          <button
+            type="button"
+            onClick={() => navigate(`${LIST_PATH}/${row.id}`)}
+            className="font-medium text-body text-left hover:text-primary hover:underline"
+          >
+            {row.customerName}
+          </button>
+        ),
+        csvValue: (row) => row.customerName,
       },
       {
         header: 'Contact',
         width: '12%',
         render: (row) => <span className="text-sm text-muted">{row.contactPerson || '—'}</span>,
+        csvValue: (row) => row.contactPerson ?? '',
       },
       {
         header: 'Mobile',
         width: '11%',
         render: (row) => <span className="text-sm text-muted">{row.mobile || '—'}</span>,
+        csvValue: (row) => row.mobile ?? '',
       },
       {
         header: 'Email',
         width: '15%',
         render: (row) => <span className="text-sm text-muted">{row.email || '—'}</span>,
+        csvValue: (row) => row.email ?? '',
       },
       {
         header: 'City',
@@ -135,6 +149,7 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
         sortable: true,
         sortKey: 'city',
         render: (row) => <span className="text-sm text-muted">{row.city || '—'}</span>,
+        csvValue: (row) => row.city ?? '',
       },
       {
         header: 'Status',
@@ -142,6 +157,7 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -149,6 +165,16 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
         align: 'center',
         render: (row) => (
           <div className="inline-flex items-center justify-center gap-2">
+            {canView ? (
+              <button
+                type="button"
+                title="View customer"
+                onClick={() => navigate(`${LIST_PATH}/${row.id}`)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-muted transition hover:border-primary hover:bg-surface-2 hover:text-primary"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            ) : null}
             {canEdit ? (
               <button
                 type="button"
@@ -169,13 +195,15 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
                 <Trash2 className="h-4 w-4" />
               </button>
             ) : null}
-            {!canEdit && !canDelete ? <span className="text-xs text-muted">—</span> : null}
+            {!canView && !canEdit && !canDelete ? <span className="text-xs text-muted">—</span> : null}
           </div>
         ),
       },
     ],
-    [table.rowIndexOffset, canEdit, canDelete, navigate]
+    [table.rowIndexOffset, canView, canEdit, canDelete, navigate]
   );
+
+  const exportProps = useListTableExport('Customers', columns, table.exportRows, canExport);
 
   if (!permsLoading && !canView) {
     const denied = <AccessDeniedPanel moduleLabel="Customers" />;
@@ -199,6 +227,8 @@ const CustomersList = ({ embedded = false }: { embedded?: boolean }) => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

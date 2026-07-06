@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { StockMovementStatusBadge } from './StockMovementStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const configFor = (movementType: StockMovementType) => {
   if (movementType === 'in') {
@@ -52,7 +54,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
   const navigate = useNavigate();
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
   const config = configFor(movementType);
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? config.perm.moduleCode,
     itemCode ?? config.perm.itemCode
   );
@@ -136,6 +138,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         sortable: true,
         sortKey: 'documentNo',
         render: (row) => <span className="font-mono text-sm font-medium text-body">{row.documentNo}</span>,
+        csvValue: (row) => row.documentNo,
       },
       {
         header: 'Date',
@@ -143,6 +146,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         sortable: true,
         sortKey: 'movementDate',
         render: (row) => <span className="text-body">{row.movementDate}</span>,
+        csvValue: (row) => formatCsvDate(row.movementDate),
       },
       {
         header: 'Warehouse',
@@ -150,6 +154,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         sortable: true,
         sortKey: 'warehouse',
         render: (row) => <span className="text-body">{row.warehouse.name}</span>,
+        csvValue: (row) => row.warehouse.name,
       },
       ...(movementType === 'in'
         ? [
@@ -159,6 +164,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
               render: (row: StockMovementRecord) => (
                 <span className="text-muted">{row.supplier?.name ?? '—'}</span>
               ),
+              csvValue: (row: StockMovementRecord) => row.supplier?.name ?? '',
             } as DataTableColumn<StockMovementRecord>,
           ]
         : []),
@@ -167,6 +173,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         width: '8%',
         align: 'center',
         render: (row) => <span className="tabular-nums text-body">{row.lines.length}</span>,
+        csvValue: (row) => row.lines.length,
       },
       {
         header: 'Total qty',
@@ -175,6 +182,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         sortKey: 'totalQuantity',
         align: 'right',
         render: (row) => <span className="tabular-nums text-body">{row.totalQuantity}</span>,
+        csvValue: (row) => row.totalQuantity,
       },
       {
         header: 'Status',
@@ -182,6 +190,7 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         sortable: true,
         sortKey: 'status',
         render: (row) => <StockMovementStatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -226,6 +235,8 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
     [canDelete, canEdit, canView, config, movementType, navigate, table.rowIndexOffset]
   );
 
+  const exportProps = useListTableExport(config.title, columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return (
       <UserLayout title={config.title} subtitle={config.subtitle}>
@@ -247,6 +258,8 @@ export const StockMovementPage = ({ movementType }: { movementType: StockMovemen
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

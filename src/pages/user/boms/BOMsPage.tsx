@@ -19,11 +19,12 @@ import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermi
 import { ManufacturingStatusBadge } from '../manufacturing/ManufacturingStatusBadge';
 import { BOMForm, emptyBOMForm } from './BOMForm';
 import { useManufacturingMasters } from '../manufacturing/useManufacturingMasters';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 const PERM = PORTAL_PERMISSION_MODULES.boms;
 
 const BOMsList = ({ embedded = false }: { embedded?: boolean }) => {
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     PERM.moduleCode, PERM.itemCode
   );
   const [items, setItems] = useState<BOMRecord[]>([]);
@@ -142,11 +143,11 @@ const BOMsList = ({ embedded = false }: { embedded?: boolean }) => {
   const columns: DataTableColumn<BOMRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_row, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'Code', width: '12%', sortable: true, sortKey: 'bomCode',
-      render: (row) => <span className="font-mono text-sm font-medium text-primary">{row.bomCode}</span> },
-    { header: 'Name', sortable: true, sortKey: 'bomName', render: (row) => <span className="font-medium text-body">{row.bomName}</span> },
-    { header: 'Components', width: '12%', align: 'center', render: (row) => <span className="text-muted">{row.components.length}</span> },
-    { header: 'Output Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.outputQty}</span> },
-    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} /> },
+      render: (row) => <span className="font-mono text-sm font-medium text-primary">{row.bomCode}</span>, csvValue: (row) => row.bomCode },
+    { header: 'Name', sortable: true, sortKey: 'bomName', render: (row) => <span className="font-medium text-body">{row.bomName}</span>, csvValue: (row) => row.bomName },
+    { header: 'Components', width: '12%', align: 'center', render: (row) => <span className="text-muted">{row.components.length}</span>, csvValue: (row) => row.components.length },
+    { header: 'Output Qty', width: '10%', align: 'right', render: (row) => <span className="tabular-nums">{row.outputQty}</span>, csvValue: (row) => row.outputQty },
+    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <ManufacturingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '12%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -166,6 +167,8 @@ const BOMsList = ({ embedded = false }: { embedded?: boolean }) => {
       ),
     },
   ], [table.rowIndexOffset, canEdit, canDelete]);
+
+  const exportProps = useListTableExport('Bill of Materials', columns, table.exportRows, canExport);
 
   if (!permsLoading && !canView) {
     const panel = <AccessDeniedPanel moduleLabel="Bill of Materials" />;
@@ -200,6 +203,8 @@ const BOMsList = ({ embedded = false }: { embedded?: boolean }) => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

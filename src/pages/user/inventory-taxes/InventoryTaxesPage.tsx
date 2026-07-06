@@ -70,6 +70,11 @@ const taxConfig = {
       ),
     },
   ],
+  exportExtraColumns: [
+    { header: 'HSN', getValue: (row) => row.hsnCode },
+    { header: 'Rate %', getValue: (row) => row.taxRate },
+    { header: 'Sort', getValue: (row) => row.sortOrder ?? 0 },
+  ],
 };
 
 export const InventoryTaxesPage = createExtendedMasterPage(taxConfig);

@@ -113,5 +113,6 @@ export function useClientDataTable<T>({
     totalPages,
     rowIndexOffset,
     pageData,
+    exportRows: sorted,
   };
 }

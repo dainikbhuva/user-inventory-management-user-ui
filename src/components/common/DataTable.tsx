@@ -8,6 +8,7 @@ export interface DataTableColumn<T> {
   header: string;
   accessor?: keyof T | string;
   render?: (item: T, index: number) => ReactNode;
+  csvValue?: (item: T, index: number) => string | number | null | undefined;
   className?: string;
   width?: string;
   sortable?: boolean;

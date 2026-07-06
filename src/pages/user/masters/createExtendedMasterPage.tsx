@@ -16,6 +16,7 @@ import { filterBySearchStatus } from '../../../shared/utils/clientTableFilters';
 import type { SearchStatusFilterValues } from '../../../shared/constants/tableFilters';
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { exportTableCsv, type CsvColumnDef } from '../../../shared/utils/tableCsvExport';
 
 interface ExtendedMasterFormProps<TForm> {
   value?: TForm;
@@ -42,13 +43,14 @@ interface ExtendedMasterPageConfig<TRecord extends PortalMasterRecord, TForm, TC
   toUpdatePayload: (data: TForm) => TUpdate;
   searchFields: Array<(item: TRecord) => string | undefined>;
   defaultSortBy?: string;
+  exportExtraColumns?: CsvColumnDef<TRecord>[];
 }
 
 export const createExtendedMasterPage = <TRecord extends PortalMasterRecord, TForm, TCreate, TUpdate>(
   config: ExtendedMasterPageConfig<TRecord, TForm, TCreate, TUpdate>
 ) => {
   const ExtendedMasterPage = () => {
-    const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+    const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
       config.permission?.moduleCode,
       config.permission?.itemCode
     );
@@ -130,6 +132,24 @@ export const createExtendedMasterPage = <TRecord extends PortalMasterRecord, TFo
         setIsDeleting(false);
       }
     };
+
+    const handleExport = useCallback(() => {
+      if (table.exportRows.length === 0) {
+        toast.error('No records to export.');
+        return;
+      }
+      exportTableCsv(
+        config.title,
+        [
+          { header: 'Name', getValue: (row) => row.name },
+          { header: 'Code', getValue: (row) => row.code },
+          ...(config.exportExtraColumns ?? []),
+          { header: 'Status', getValue: (row) => row.status },
+        ],
+        table.exportRows
+      );
+      toast.success('Export downloaded.');
+    }, [table.exportRows]);
 
     const baseColumns: DataTableColumn<TRecord>[] = useMemo(
       () => [
@@ -223,6 +243,9 @@ export const createExtendedMasterPage = <TRecord extends PortalMasterRecord, TFo
           onApply={table.handleApply}
           onReset={table.handleReset}
           isApplying={isLoading}
+          showExport={canExport}
+          onExport={handleExport}
+          exportDisabled={isLoading || table.exportRows.length === 0}
         >
           <SearchStatusFilters
             search={table.draftFilters.search}

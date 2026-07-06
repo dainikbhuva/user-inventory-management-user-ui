@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { TradingStatusBadge } from '../trading/TradingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/sales/sales-orders';
 const PERM = PORTAL_PERMISSION_MODULES.salesOrders;
@@ -27,7 +29,7 @@ const formatCurrency = (n: number) =>
 
 export const SalesOrdersPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<SalesOrderRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<SalesOrderRecord | null>(null);
@@ -63,11 +65,11 @@ export const SalesOrdersPage = () => {
   const columns: DataTableColumn<SalesOrderRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_r, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'SO Number', width: '13%', sortable: true, sortKey: 'soNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.soNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'soDate', render: (row) => <span className="text-sm">{formatDate(row.soDate)}</span> },
-    { header: 'Customer', width: '22%', render: (row) => <span className="text-sm">{row.customerName || '—'}</span> },
-    { header: 'Amount', width: '12%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span> },
-    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.soNumber}</button>, csvValue: (row) => row.soNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'soDate', render: (row) => <span className="text-sm">{formatDate(row.soDate)}</span>, csvValue: (row) => formatCsvDate(row.soDate) },
+    { header: 'Customer', width: '22%', render: (row) => <span className="text-sm">{row.customerName || '—'}</span>, csvValue: (row) => row.customerName ?? '' },
+    { header: 'Amount', width: '12%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span>, csvValue: (row) => row.totalAmount },
+    { header: 'Status', width: '12%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '15%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -86,6 +88,8 @@ export const SalesOrdersPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Sales Orders', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Sales Orders" subtitle="Manage customer orders."><AccessDeniedPanel moduleLabel="Sales Orders" /></UserLayout>;
   }
@@ -95,7 +99,9 @@ export const SalesOrdersPage = () => {
       <TableListToolbar title="Sales Orders" subtitle="Manage customer orders." addLabel="New Order"
         onAdd={canCreate ? () => navigate(`${LIST_PATH}/new`) : undefined}
         filterOpen={table.filterOpen} onFilterToggle={() => table.setFilterOpen((o) => !o)}
-        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}>
+        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}>
         <SearchStatusFilters search={table.draftFilters.search} status={table.draftFilters.status}
           onSearchChange={(s) => table.setDraftFilters((p) => ({ ...p, search: s }))}
           onStatusChange={(s) => table.setDraftFilters((p) => ({ ...p, status: s as SearchStatusFilterValues['status'] }))}

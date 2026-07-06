@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { TradingStatusBadge } from '../trading/TradingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/purchase/purchase-orders';
 const PERM = PORTAL_PERMISSION_MODULES.purchaseOrders;
@@ -28,7 +30,7 @@ const formatCurrency = (n: number) =>
 
 export const PurchaseOrdersPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     PERM.moduleCode,
     PERM.itemCode
   );
@@ -114,6 +116,7 @@ export const PurchaseOrdersPage = () => {
             {row.poNumber}
           </button>
         ),
+        csvValue: (row) => row.poNumber,
       },
       {
         header: 'Date',
@@ -121,16 +124,19 @@ export const PurchaseOrdersPage = () => {
         sortable: true,
         sortKey: 'poDate',
         render: (row) => <span className="text-sm text-body">{formatDate(row.poDate)}</span>,
+        csvValue: (row) => formatCsvDate(row.poDate),
       },
       {
         header: 'Supplier',
         width: '20%',
         render: (row) => <span className="text-sm text-body">{row.supplierName || '—'}</span>,
+        csvValue: (row) => row.supplierName ?? '',
       },
       {
         header: 'Warehouse',
         width: '14%',
         render: (row) => <span className="text-sm text-muted">{row.warehouseName || '—'}</span>,
+        csvValue: (row) => row.warehouseName ?? '',
       },
       {
         header: 'Amount',
@@ -139,6 +145,7 @@ export const PurchaseOrdersPage = () => {
         sortKey: 'totalAmount',
         align: 'right',
         render: (row) => <span className="tabular-nums text-sm font-medium text-body">{formatCurrency(row.totalAmount)}</span>,
+        csvValue: (row) => row.totalAmount,
       },
       {
         header: 'Status',
@@ -146,6 +153,7 @@ export const PurchaseOrdersPage = () => {
         sortable: true,
         sortKey: 'status',
         render: (row) => <TradingStatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -178,6 +186,8 @@ export const PurchaseOrdersPage = () => {
     [table.rowIndexOffset, canDelete, navigate]
   );
 
+  const exportProps = useListTableExport('Purchase Orders', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Purchase Orders" subtitle="Manage purchase orders to suppliers.">
@@ -199,6 +209,8 @@ export const PurchaseOrdersPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

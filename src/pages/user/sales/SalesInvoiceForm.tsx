@@ -6,6 +6,7 @@ import { FormField } from '../../../components/ui/FormField';
 import { Select } from '../../../components/ui/Select';
 import { DateInput } from '../../../components/ui/DateInput';
 import { TradingLinesEditor } from '../trading/TradingLinesEditor';
+import { TradingDocumentSelect, type TradingDocumentOption } from '../../../components/trading/TradingDocumentSelect';
 import type { SalesInvoiceFormValues, SalesInvoiceRecord, TradingLineFormValues, CustomerRecord } from '../../../shared/types/trading.types';
 import type { InventoryWarehouseRecord, InventoryTaxRecord } from '../../../shared/types/inventoryMaster.types';
 import type { InventoryProductRecord } from '../../../shared/types/inventoryProduct.types';
@@ -21,6 +22,8 @@ interface SalesInvoiceFormProps {
   warehouses: InventoryWarehouseRecord[];
   products: InventoryProductRecord[];
   taxes: InventoryTaxRecord[];
+  deliveryChallanOptions?: TradingDocumentOption[];
+  salesOrderOptions?: TradingDocumentOption[];
   onChange: (value: SalesInvoiceFormValues) => void;
   onClearFieldError?: (field: keyof SalesInvoiceFormValues) => void;
   onAutoGenerateNumber?: () => void;
@@ -104,7 +107,7 @@ export const formValuesToSalesInvoicePayload = (v: SalesInvoiceFormValues, opts?
 
 export const SalesInvoiceForm = ({
   mode, value, errors, isSubmitting = false, autoInvoiceNumber = false, isGeneratingNumber = false,
-  customers, warehouses, products, taxes, onChange, onClearFieldError, onAutoGenerateNumber,
+  customers, warehouses, products, taxes, deliveryChallanOptions = [], salesOrderOptions = [], onChange, onClearFieldError, onAutoGenerateNumber,
   onInvoiceNumberManualChange, onCancel, onSubmit, submitLabel,
 }: SalesInvoiceFormProps) => {
   const set = (field: keyof SalesInvoiceFormValues, val: string) => {
@@ -152,10 +155,22 @@ export const SalesInvoiceForm = ({
             <Input type="number" min="0" step="0.01" value={value.discount} placeholder="0.00" error={Boolean(fieldError('discount'))} onChange={(e) => set('discount', e.target.value)} />
           </FormField>
           <FormField label="Delivery Challan (optional)" error={fieldError('deliveryChallanId')}>
-            <Input value={value.deliveryChallanId} placeholder="DC ID" error={Boolean(fieldError('deliveryChallanId'))} onChange={(e) => set('deliveryChallanId', e.target.value)} />
+            <TradingDocumentSelect
+              value={value.deliveryChallanId}
+              options={deliveryChallanOptions}
+              placeholder="— Select delivery challan —"
+              error={Boolean(fieldError('deliveryChallanId'))}
+              onChange={(next) => set('deliveryChallanId', next)}
+            />
           </FormField>
           <FormField label="Sales Order (optional)" error={fieldError('salesOrderId')}>
-            <Input value={value.salesOrderId} placeholder="SO ID" error={Boolean(fieldError('salesOrderId'))} onChange={(e) => set('salesOrderId', e.target.value)} />
+            <TradingDocumentSelect
+              value={value.salesOrderId}
+              options={salesOrderOptions}
+              placeholder="— Select sales order —"
+              error={Boolean(fieldError('salesOrderId'))}
+              onChange={(next) => set('salesOrderId', next)}
+            />
           </FormField>
           <FormField label="Reference No." error={fieldError('referenceNo')}>
             <Input value={value.referenceNo} placeholder="PO / ref" error={Boolean(fieldError('referenceNo'))} onChange={(e) => set('referenceNo', e.target.value)} />

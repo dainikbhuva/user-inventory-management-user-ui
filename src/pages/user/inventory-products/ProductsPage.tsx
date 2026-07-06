@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { UserLayout } from '../../../components/layout/Layout';
 import { Pagination } from '../../../components/common/Pagination';
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable';
@@ -18,6 +18,7 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 const LIST_PATH = '/products';
 const PERM = PORTAL_PERMISSION_MODULES.products;
@@ -47,7 +48,7 @@ const StockLevelBadge = ({ level }: { level: InventoryProductRecord['stockLevel'
 export const ProductsPage = () => {
   const navigate = useNavigate();
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? PERM.moduleCode,
     itemCode ?? PERM.itemCode
   );
@@ -131,6 +132,7 @@ export const ProductsPage = () => {
         sortable: true,
         sortKey: 'productCode',
         render: (row) => <span className="font-mono text-sm text-body">{row.productCode}</span>,
+        csvValue: (row) => row.productCode,
       },
       {
         header: 'Product',
@@ -138,6 +140,7 @@ export const ProductsPage = () => {
         sortable: true,
         sortKey: 'productName',
         render: (row) => <span className="font-medium text-body">{row.productName}</span>,
+        csvValue: (row) => row.productName,
       },
       {
         header: 'Category',
@@ -145,11 +148,13 @@ export const ProductsPage = () => {
         sortable: true,
         sortKey: 'category',
         render: (row) => <span className="text-body">{row.category.name}</span>,
+        csvValue: (row) => row.category.name,
       },
       {
         header: 'Unit',
         width: '8%',
         render: (row) => <span className="text-muted">{row.unit.name}</span>,
+        csvValue: (row) => row.unit.name,
       },
       {
         header: 'Qty on hand',
@@ -158,6 +163,7 @@ export const ProductsPage = () => {
         sortKey: 'quantityOnHand',
         align: 'right',
         render: (row) => <span className="tabular-nums text-body">{row.quantityOnHand}</span>,
+        csvValue: (row) => row.quantityOnHand,
       },
       {
         header: 'Stock',
@@ -165,12 +171,14 @@ export const ProductsPage = () => {
         sortable: true,
         sortKey: 'stockLevel',
         render: (row) => <StockLevelBadge level={row.stockLevel} />,
+        csvValue: (row) => row.stockLevel,
       },
       {
         header: 'Sale price',
         width: '9%',
         align: 'right',
         render: (row) => <span className="tabular-nums text-body">{row.salePrice.toFixed(2)}</span>,
+        csvValue: (row) => row.salePrice,
       },
       {
         header: 'Status',
@@ -178,6 +186,7 @@ export const ProductsPage = () => {
         sortable: true,
         sortKey: 'status',
         render: (row) => <StatusBadge status={row.status} />,
+        csvValue: (row) => row.status,
       },
       {
         header: 'Actions',
@@ -185,6 +194,16 @@ export const ProductsPage = () => {
         align: 'center',
         render: (row) => (
           <div className="inline-flex items-center justify-center gap-2">
+            {canView ? (
+              <button
+                type="button"
+                title="View product"
+                onClick={() => navigate(`${LIST_PATH}/${row.id}`)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-base bg-surface text-muted transition hover:border-primary hover:bg-surface-2 hover:text-primary"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            ) : null}
             {canEdit ? (
               <button
                 type="button"
@@ -210,8 +229,10 @@ export const ProductsPage = () => {
         ),
       },
     ],
-    [canDelete, canEdit, navigate, table.rowIndexOffset]
+    [canDelete, canEdit, canView, navigate, table.rowIndexOffset]
   );
+
+  const exportProps = useListTableExport('Products', columns, table.exportRows, canExport);
 
   if (!permsLoading && !canView) {
     return (
@@ -234,6 +255,8 @@ export const ProductsPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

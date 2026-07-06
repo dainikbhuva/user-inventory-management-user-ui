@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { TradingStatusBadge } from '../trading/TradingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/purchase/grns';
 const PERM = PORTAL_PERMISSION_MODULES.grns;
@@ -28,7 +30,7 @@ const formatCurrency = (n: number) =>
 
 export const GRNsPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     PERM.moduleCode, PERM.itemCode
   );
   const [items, setItems] = useState<GRNRecord[]>([]);
@@ -71,12 +73,12 @@ export const GRNsPage = () => {
   const columns: DataTableColumn<GRNRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_row, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'GRN Number', width: '14%', sortable: true, sortKey: 'grnNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.grnNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'grnDate', render: (row) => <span className="text-sm text-body">{formatDate(row.grnDate)}</span> },
-    { header: 'Supplier', width: '20%', render: (row) => <span className="text-sm text-body">{row.supplierName || '—'}</span> },
-    { header: 'PO Ref', width: '13%', render: (row) => <span className="text-sm text-muted font-mono">{row.poNumber || '—'}</span> },
-    { header: 'Amount', width: '12%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium text-body">{formatCurrency(row.totalAmount)}</span> },
-    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.grnNumber}</button>, csvValue: (row) => row.grnNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'grnDate', render: (row) => <span className="text-sm text-body">{formatDate(row.grnDate)}</span>, csvValue: (row) => formatCsvDate(row.grnDate) },
+    { header: 'Supplier', width: '20%', render: (row) => <span className="text-sm text-body">{row.supplierName || '—'}</span>, csvValue: (row) => row.supplierName ?? '' },
+    { header: 'PO Ref', width: '13%', render: (row) => <span className="text-sm text-muted font-mono">{row.poNumber || '—'}</span>, csvValue: (row) => row.poNumber ?? '' },
+    { header: 'Amount', width: '12%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium text-body">{formatCurrency(row.totalAmount)}</span>, csvValue: (row) => row.totalAmount },
+    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '15%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -95,6 +97,8 @@ export const GRNsPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('GRNs', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Goods Receipt Notes" subtitle="Receive goods from suppliers."><AccessDeniedPanel moduleLabel="GRNs" /></UserLayout>;
   }
@@ -104,7 +108,9 @@ export const GRNsPage = () => {
       <TableListToolbar title="GRNs" subtitle="Record goods received from suppliers." addLabel="New GRN"
         onAdd={canCreate ? () => navigate(`${LIST_PATH}/new`) : undefined}
         filterOpen={table.filterOpen} onFilterToggle={() => table.setFilterOpen((o) => !o)}
-        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}>
+        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}>
         <SearchStatusFilters search={table.draftFilters.search} status={table.draftFilters.status}
           onSearchChange={(search) => table.setDraftFilters((p) => ({ ...p, search }))}
           onStatusChange={(status) => table.setDraftFilters((p) => ({ ...p, status: status as SearchStatusFilterValues['status'] }))}

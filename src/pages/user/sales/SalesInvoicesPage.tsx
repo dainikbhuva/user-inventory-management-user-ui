@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { TradingStatusBadge } from '../trading/TradingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/sales/sales-invoices';
 const PERM = PORTAL_PERMISSION_MODULES.salesInvoices;
@@ -27,7 +29,7 @@ const formatCurrency = (n: number) =>
 
 export const SalesInvoicesPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<SalesInvoiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<SalesInvoiceRecord | null>(null);
@@ -63,13 +65,13 @@ export const SalesInvoicesPage = () => {
   const columns: DataTableColumn<SalesInvoiceRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_r, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'Invoice No.', width: '13%', sortable: true, sortKey: 'invoiceNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.invoiceNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'invoiceDate', render: (row) => <span className="text-sm">{formatDate(row.invoiceDate)}</span> },
-    { header: 'Customer', width: '20%', render: (row) => <span className="text-sm">{row.customerName || '—'}</span> },
-    { header: 'Total', width: '11%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.invoiceNumber}</button>, csvValue: (row) => row.invoiceNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'invoiceDate', render: (row) => <span className="text-sm">{formatDate(row.invoiceDate)}</span>, csvValue: (row) => formatCsvDate(row.invoiceDate) },
+    { header: 'Customer', width: '20%', render: (row) => <span className="text-sm">{row.customerName || '—'}</span>, csvValue: (row) => row.customerName ?? '' },
+    { header: 'Total', width: '11%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span>, csvValue: (row) => row.totalAmount },
     { header: 'Balance', width: '11%', align: 'right',
-      render: (row) => <span className={`tabular-nums text-sm font-medium ${row.balanceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(row.balanceAmount)}</span> },
-    { header: 'Status', width: '11%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} /> },
+      render: (row) => <span className={`tabular-nums text-sm font-medium ${row.balanceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(row.balanceAmount)}</span>, csvValue: (row) => row.balanceAmount },
+    { header: 'Status', width: '11%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '10%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -88,6 +90,8 @@ export const SalesInvoicesPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Sales Invoices', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Sales Invoices" subtitle="Manage customer invoices."><AccessDeniedPanel moduleLabel="Sales Invoices" /></UserLayout>;
   }
@@ -97,7 +101,9 @@ export const SalesInvoicesPage = () => {
       <TableListToolbar title="Sales Invoices" subtitle="Manage customer invoices." addLabel="New Invoice"
         onAdd={canCreate ? () => navigate(`${LIST_PATH}/new`) : undefined}
         filterOpen={table.filterOpen} onFilterToggle={() => table.setFilterOpen((o) => !o)}
-        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}>
+        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}>
         <SearchStatusFilters search={table.draftFilters.search} status={table.draftFilters.status}
           onSearchChange={(s) => table.setDraftFilters((p) => ({ ...p, search: s }))}
           onStatusChange={(s) => table.setDraftFilters((p) => ({ ...p, status: s as SearchStatusFilterValues['status'] }))}

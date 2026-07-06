@@ -3,10 +3,17 @@ import { useAuth } from '../../../shared/auth/useAuth';
 import { useMenu } from '../../../hooks/useMenu';
 import { UserLayout } from '../../../components/layout/Layout';
 import { DashboardAnnouncements } from './DashboardAnnouncements';
+import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
+import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
+import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
   const { groups, meta } = useMenu();
+  const { canView, isLoading: permsLoading } = useModulePermissions(
+    PORTAL_PERMISSION_MODULES.dashboard.moduleCode,
+    PORTAL_PERMISSION_MODULES.dashboard.itemCode
+  );
 
   const greeting =
     new Date().getHours() < 12
@@ -17,6 +24,12 @@ export const DashboardPage = () => {
 
   return (
     <UserLayout title="Dashboard" subtitle={`Welcome back, ${user?.name || 'User'}`}>
+      {permsLoading ? (
+        <div className="py-12 text-center text-muted">Loading...</div>
+      ) : !canView ? (
+        <AccessDeniedPanel moduleLabel="Dashboard" />
+      ) : (
+      <>
       <div
         style={{
           background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
@@ -133,6 +146,8 @@ export const DashboardPage = () => {
             </p>
           </div>
         </div>
+      )}
+      </>
       )}
     </UserLayout>
   );

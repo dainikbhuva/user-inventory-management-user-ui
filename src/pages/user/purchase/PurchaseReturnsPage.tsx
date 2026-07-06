@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { TradingStatusBadge } from '../trading/TradingStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/purchase/purchase-returns';
 const PERM = PORTAL_PERMISSION_MODULES.purchaseReturns;
@@ -27,7 +29,7 @@ const formatCurrency = (n: number) =>
 
 export const PurchaseReturnsPage = () => {
   const navigate = useNavigate();
-  const { canView, canCreate, canDelete, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
+  const { canView, canCreate, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(PERM.moduleCode, PERM.itemCode);
   const [items, setItems] = useState<PurchaseReturnRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<PurchaseReturnRecord | null>(null);
@@ -63,11 +65,11 @@ export const PurchaseReturnsPage = () => {
   const columns: DataTableColumn<PurchaseReturnRecord>[] = useMemo(() => [
     { header: '#', width: '5%', align: 'center', render: (_r, i) => <span className="text-muted tabular-nums">{table.rowIndexOffset + i + 1}</span> },
     { header: 'Return No.', width: '14%', sortable: true, sortKey: 'returnNumber',
-      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.returnNumber}</button> },
-    { header: 'Date', width: '11%', sortable: true, sortKey: 'returnDate', render: (row) => <span className="text-sm">{formatDate(row.returnDate)}</span> },
-    { header: 'Supplier', width: '22%', render: (row) => <span className="text-sm">{row.supplierName || '—'}</span> },
-    { header: 'Amount', width: '13%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span> },
-    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} /> },
+      render: (row) => <button type="button" onClick={() => navigate(`${LIST_PATH}/${row.id}`)} className="font-mono text-sm font-medium text-primary hover:underline">{row.returnNumber}</button>, csvValue: (row) => row.returnNumber },
+    { header: 'Date', width: '11%', sortable: true, sortKey: 'returnDate', render: (row) => <span className="text-sm">{formatDate(row.returnDate)}</span>, csvValue: (row) => formatCsvDate(row.returnDate) },
+    { header: 'Supplier', width: '22%', render: (row) => <span className="text-sm">{row.supplierName || '—'}</span>, csvValue: (row) => row.supplierName ?? '' },
+    { header: 'Amount', width: '13%', align: 'right', render: (row) => <span className="tabular-nums text-sm font-medium">{formatCurrency(row.totalAmount)}</span>, csvValue: (row) => row.totalAmount },
+    { header: 'Status', width: '10%', sortable: true, sortKey: 'status', render: (row) => <TradingStatusBadge status={row.status} />, csvValue: (row) => row.status },
     { header: 'Actions', width: '15%', align: 'center',
       render: (row) => (
         <div className="inline-flex items-center justify-center gap-2">
@@ -86,6 +88,8 @@ export const PurchaseReturnsPage = () => {
     },
   ], [table.rowIndexOffset, canDelete, navigate]);
 
+  const exportProps = useListTableExport('Purchase Returns', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return <UserLayout title="Purchase Returns" subtitle="Return goods to suppliers."><AccessDeniedPanel moduleLabel="Purchase Returns" /></UserLayout>;
   }
@@ -95,7 +99,9 @@ export const PurchaseReturnsPage = () => {
       <TableListToolbar title="Purchase Returns" subtitle="Return goods to suppliers." addLabel="New Return"
         onAdd={canCreate ? () => navigate(`${LIST_PATH}/new`) : undefined}
         filterOpen={table.filterOpen} onFilterToggle={() => table.setFilterOpen((o) => !o)}
-        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}>
+        activeFilterCount={table.activeFilterCount} onApply={table.handleApply} onReset={table.handleReset} isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}>
         <SearchStatusFilters search={table.draftFilters.search} status={table.draftFilters.status}
           onSearchChange={(s) => table.setDraftFilters((p) => ({ ...p, search: s }))}
           onStatusChange={(s) => table.setDraftFilters((p) => ({ ...p, status: s as SearchStatusFilterValues['status'] }))}

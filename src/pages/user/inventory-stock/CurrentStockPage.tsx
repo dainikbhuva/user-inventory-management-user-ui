@@ -14,17 +14,19 @@ import type { SearchStatusFilterValues } from '../../../shared/constants/tableFi
 import { useModulePermissions } from '../../../shared/permissions/PermissionContext';
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
+import { useListTableExport } from '../../../hooks/useListTableExport';
 
 const PERM = PORTAL_PERMISSION_MODULES.currentStock;
 
 export const CurrentStockPage = () => {
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
-  const { canView, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? PERM.moduleCode,
     itemCode ?? PERM.itemCode
   );
   const [items, setItems] = useState<CurrentStockRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stockView, setStockView] = useState<'all' | 'low'>('all');
 
   const filterFn = useCallback((rows: CurrentStockRecord[], filters: SearchStatusFilterValues) => {
     const q = filters.search.trim().toLowerCase();
@@ -47,21 +49,22 @@ export const CurrentStockPage = () => {
   });
 
   useEffect(() => {
-    inventoryStockService
-      .getCurrentStock()
+    setIsLoading(true);
+    const loader = stockView === 'low' ? inventoryStockService.getLowStock() : inventoryStockService.getCurrentStock();
+    loader
       .then(setItems)
       .catch((err) => toast.error(getApiErrorMessage(err, 'Failed to load current stock')))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [stockView]);
 
   const columns: DataTableColumn<CurrentStockRecord>[] = useMemo(
     () => [
       { header: '#', width: '4%', align: 'center', render: (_r, i) => <span className="text-muted">{table.rowIndexOffset + i + 1}</span> },
-      { header: 'Product', sortable: true, sortKey: 'productName', render: (r) => <span className="font-medium text-body">{r.product.name}</span> },
-      { header: 'Code', render: (r) => <span className="font-mono text-sm">{r.product.code}</span> },
-      { header: 'Warehouse', sortable: true, sortKey: 'warehouse', render: (r) => r.warehouse.name },
-      { header: 'Qty', sortable: true, sortKey: 'currentStock', align: 'right', render: (r) => <span className="tabular-nums">{r.currentStock}</span> },
-      { header: 'Value', sortable: true, sortKey: 'stockValue', align: 'right', render: (r) => <span className="tabular-nums">{r.stockValue.toFixed(2)}</span> },
+      { header: 'Product', sortable: true, sortKey: 'productName', render: (r) => <span className="font-medium text-body">{r.product.name}</span>, csvValue: (r) => r.product.name },
+      { header: 'Code', render: (r) => <span className="font-mono text-sm">{r.product.code}</span>, csvValue: (r) => r.product.code },
+      { header: 'Warehouse', sortable: true, sortKey: 'warehouse', render: (r) => r.warehouse.name, csvValue: (r) => r.warehouse.name },
+      { header: 'Qty', sortable: true, sortKey: 'currentStock', align: 'right', render: (r) => <span className="tabular-nums">{r.currentStock}</span>, csvValue: (r) => r.currentStock },
+      { header: 'Value', sortable: true, sortKey: 'stockValue', align: 'right', render: (r) => <span className="tabular-nums">{r.stockValue.toFixed(2)}</span>, csvValue: (r) => r.stockValue },
       {
         header: 'Alert',
         render: (r) =>
@@ -70,10 +73,13 @@ export const CurrentStockPage = () => {
           ) : (
             <span className="text-muted text-xs">OK</span>
           ),
+        csvValue: (r) => (r.isLowStock ? 'Low stock' : 'OK'),
       },
     ],
     [table.rowIndexOffset]
   );
+
+  const exportProps = useListTableExport('Current Stock', columns, table.exportRows, canExport);
 
   if (!permsLoading && !canView) {
     return (
@@ -85,6 +91,23 @@ export const CurrentStockPage = () => {
 
   return (
     <UserLayout title="Current Stock" subtitle="Auto-maintained stock per product and warehouse">
+      <div className="mb-4 inline-flex rounded-sm border border-base p-0.5">
+        {([
+          { key: 'all', label: 'All stock' },
+          { key: 'low', label: 'Low stock only' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setStockView(tab.key)}
+            className={`rounded-sm px-4 py-2 text-sm font-semibold transition ${
+              stockView === tab.key ? 'bg-primary text-white' : 'text-muted hover:bg-surface-2 hover:text-body'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <TableListToolbar
         title="Current Stock"
         subtitle="Updated automatically when stock in/out or adjustments are posted."
@@ -95,6 +118,8 @@ export const CurrentStockPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}

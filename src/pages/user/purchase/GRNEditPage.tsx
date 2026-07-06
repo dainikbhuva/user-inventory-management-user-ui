@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { GRNForm, grnToFormValues, formValuesToGrnPayload } from './GRNForm';
 import { grnService } from '../../../services/trading.service';
 import { useTradingMasters } from './useTradingMasters';
+import { useTradingDocumentOptions } from './useTradingDocumentOptions';
 import { toast } from '../../../shared/utils/toast';
 import { getApiErrorMessage } from '../../../shared/utils/apiError';
 import { useFormValidation } from '../../../hooks/useFormValidation';
@@ -24,6 +25,7 @@ export const GRNEditPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { errors, clearFieldError, clearErrors, applyApiErrors } = useFormValidation<GRNFormValues>();
   const masters = useTradingMasters();
+  const docOptions = useTradingDocumentOptions();
 
   useEffect(() => {
     if (!id) return;
@@ -58,11 +60,12 @@ export const GRNEditPage = () => {
             <ArrowLeft className="mr-2 inline h-4 w-4" />Back
           </Button>
         </div>
-        {isLoading || masters.isLoading || !form ? (
+        {isLoading || masters.isLoading || docOptions.isLoading || !form ? (
           <div className="flex h-64 items-center justify-center text-muted">Loading...</div>
         ) : (
           <GRNForm mode="edit" value={form} errors={errors} isSubmitting={isSubmitting}
             suppliers={masters.suppliers} warehouses={masters.warehouses} products={masters.products} taxes={masters.taxes}
+            purchaseOrderOptions={docOptions.purchaseOrders}
             onChange={setForm} onClearFieldError={clearFieldError}
             onCancel={() => navigate(`${LIST_PATH}/${id}`)} onSubmit={handleSubmit} submitLabel="Update GRN" />
         )}

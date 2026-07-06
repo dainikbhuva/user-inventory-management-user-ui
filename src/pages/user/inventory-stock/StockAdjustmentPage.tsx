@@ -18,6 +18,8 @@ import { useModulePermissions } from '../../../shared/permissions/PermissionCont
 import { PORTAL_PERMISSION_MODULES } from '../../../shared/constants/portalPermissionModules';
 import { AccessDeniedPanel } from '../../../components/common/AccessDeniedPanel';
 import { StockMovementStatusBadge } from '../stock-movements/StockMovementStatusBadge';
+import { useListTableExport } from '../../../hooks/useListTableExport';
+import { formatCsvDate } from '../../../shared/utils/csvFormatters';
 
 const LIST_PATH = '/stock-adjustment';
 const PERM = PORTAL_PERMISSION_MODULES.stockAdjustment;
@@ -28,7 +30,7 @@ const statusMap = (status: StockAdjustmentRecord['status']) =>
 export const StockAdjustmentPage = () => {
   const navigate = useNavigate();
   const { moduleCode, itemCode } = useParams<{ moduleCode?: string; itemCode?: string }>();
-  const { canView, canCreate, canEdit, canDelete, isLoading: permsLoading } = useModulePermissions(
+  const { canView, canCreate, canEdit, canDelete, canExport, isLoading: permsLoading } = useModulePermissions(
     moduleCode ?? PERM.moduleCode,
     itemCode ?? PERM.itemCode
   );
@@ -91,12 +93,12 @@ export const StockAdjustmentPage = () => {
 
   const columns: DataTableColumn<StockAdjustmentRecord>[] = useMemo(
     () => [
-      { header: 'Document', render: (r) => <span className="font-mono font-medium">{r.adjustmentNumber}</span> },
-      { header: 'Date', sortable: true, sortKey: 'adjustmentDate', render: (r) => r.adjustmentDate },
-      { header: 'Warehouse', render: (r) => r.warehouse.name },
-      { header: 'Reason', render: (r) => r.reason.replace('_', ' ') },
-      { header: 'Items', align: 'center', render: (r) => r.lines.length },
-      { header: 'Status', render: (r) => <StockMovementStatusBadge status={statusMap(r.status)} /> },
+      { header: 'Document', render: (r) => <span className="font-mono font-medium">{r.adjustmentNumber}</span>, csvValue: (r) => r.adjustmentNumber },
+      { header: 'Date', sortable: true, sortKey: 'adjustmentDate', render: (r) => r.adjustmentDate, csvValue: (r) => formatCsvDate(r.adjustmentDate) },
+      { header: 'Warehouse', render: (r) => r.warehouse.name, csvValue: (r) => r.warehouse.name },
+      { header: 'Reason', render: (r) => r.reason.replace('_', ' '), csvValue: (r) => r.reason.replace('_', ' ') },
+      { header: 'Items', align: 'center', render: (r) => r.lines.length, csvValue: (r) => r.lines.length },
+      { header: 'Status', render: (r) => <StockMovementStatusBadge status={statusMap(r.status)} />, csvValue: (r) => statusMap(r.status) },
       {
         header: 'Actions',
         align: 'right',
@@ -124,6 +126,8 @@ export const StockAdjustmentPage = () => {
     [canDelete, canEdit, canView, navigate]
   );
 
+  const exportProps = useListTableExport('Stock Adjustments', columns, table.exportRows, canExport);
+
   if (!permsLoading && !canView) {
     return (
       <UserLayout title="Stock Adjustment" subtitle="Physical count corrections">
@@ -145,6 +149,8 @@ export const StockAdjustmentPage = () => {
         onApply={table.handleApply}
         onReset={table.handleReset}
         isApplying={isLoading}
+        {...exportProps}
+        exportDisabled={isLoading || exportProps.exportDisabled}
       >
         <SearchStatusFilters
           search={table.draftFilters.search}
