@@ -253,6 +253,16 @@ export const API_ENDPOINTS = {
   ASSISTANT: {
     CHAT: '/app/assistant/chat',
   },
+  REPORTS: {
+    USERS: '/app/reports/users',
+    ATTENDANCE: '/app/reports/attendance',
+    PRODUCTS: '/app/reports/products',
+    STOCK_IN: '/app/reports/stock-in',
+    STOCK_OUT: '/app/reports/stock-out',
+    CURRENT_STOCK: '/app/reports/current-stock',
+    STOCK_LEDGER: '/app/reports/stock-ledger',
+    STOCK_ADJUSTMENTS: '/app/reports/stock-adjustments',
+  },
 } as const;
 
 export const QUERY_KEYS = {

@@ -21,6 +21,13 @@ import { SalesOrdersPage } from '../sales/SalesOrdersPage';
 import { DeliveryChallansPage } from '../sales/DeliveryChallansPage';
 import { SalesInvoicesPage } from '../sales/SalesInvoicesPage';
 import { SalesReturnsPage } from '../sales/SalesReturnsPage';
+import { UserReportPage } from '../reports/UserReportPage';
+import { AttendanceReportPage } from '../reports/AttendanceReportPage';
+import { ProductReportPage } from '../reports/ProductReportPage';
+import { StockInReportPage, StockOutReportPage } from '../reports/StockMovementReportPage';
+import { CurrentStockReportPage } from '../reports/CurrentStockReportPage';
+import { StockLedgerReportPage } from '../reports/StockLedgerReportPage';
+import { StockAdjustmentReportPage } from '../reports/StockAdjustmentReportPage';
 
 const ROLE_CODES = new Set(['roles', 'role']);
 const USER_CODES = new Set(['users', 'user']);
@@ -46,6 +53,27 @@ const SALES_RETURN_CODES = new Set(['sales-returns', 'sales-return', 'salesretur
 const WORK_ORDER_CODES = new Set(['work-orders', 'work-order', 'workorders', 'workorder', 'wo']);
 const MATERIAL_ISSUE_CODES = new Set(['material-issues', 'material-issue', 'materialissues', 'materialissue', 'mi']);
 const PRODUCTION_ENTRY_CODES = new Set(['production-entries', 'production-entry', 'productionentries', 'productionentry', 'pe']);
+const USER_REPORT_CODES = new Set(['user-report', 'user_report', 'userreport']);
+const ATTENDANCE_REPORT_CODES = new Set(['attendance-report', 'attendance_report', 'attendancereport']);
+const PRODUCT_REPORT_CODES = new Set(['product-report', 'product_report', 'productreport']);
+const STOCK_IN_REPORT_CODES = new Set(['stock-in-report', 'stock_in_report', 'stockinreport']);
+const STOCK_OUT_REPORT_CODES = new Set(['stock-out-report', 'stock_out_report', 'stockoutreport']);
+const CURRENT_STOCK_REPORT_CODES = new Set([
+  'current-stock-report',
+  'current_stock_report',
+  'currentstockreport',
+  'inventory-report',
+]);
+const STOCK_LEDGER_REPORT_CODES = new Set([
+  'stock-ledger-report',
+  'stock_ledger_report',
+  'stockledgerreport',
+]);
+const STOCK_ADJUSTMENT_REPORT_CODES = new Set([
+  'stock-adjustment-report',
+  'stock_adjustment_report',
+  'stockadjustmentreport',
+]);
 
 const SETTINGS_REDIRECTS: Record<string, string> = {
   departments: '/settings/departments',
@@ -119,6 +147,14 @@ const resolvePage = (moduleCode?: string, itemCode?: string) => {
   if (WORK_ORDER_CODES.has(primary)) return <WorkOrdersPage />;
   if (MATERIAL_ISSUE_CODES.has(primary)) return <MaterialIssuesPage />;
   if (PRODUCTION_ENTRY_CODES.has(primary)) return <ProductionEntriesPage />;
+  if (USER_REPORT_CODES.has(primary)) return <UserReportPage />;
+  if (ATTENDANCE_REPORT_CODES.has(primary)) return <AttendanceReportPage />;
+  if (PRODUCT_REPORT_CODES.has(primary)) return <ProductReportPage />;
+  if (STOCK_IN_REPORT_CODES.has(primary)) return <StockInReportPage />;
+  if (STOCK_OUT_REPORT_CODES.has(primary)) return <StockOutReportPage />;
+  if (CURRENT_STOCK_REPORT_CODES.has(primary)) return <CurrentStockReportPage />;
+  if (STOCK_LEDGER_REPORT_CODES.has(primary)) return <StockLedgerReportPage />;
+  if (STOCK_ADJUSTMENT_REPORT_CODES.has(primary)) return <StockAdjustmentReportPage />;
   return null;
 };
 

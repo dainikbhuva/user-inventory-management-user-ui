@@ -36,4 +36,12 @@ export const PORTAL_PERMISSION_MODULES = {
   workOrders: { moduleCode: 'work-orders', itemCode: 'work-orders' },
   materialIssues: { moduleCode: 'material-issues', itemCode: 'material-issues' },
   productionEntries: { moduleCode: 'production-entries', itemCode: 'production-entries' },
+  userReport: { moduleCode: 'report', itemCode: 'user-report' },
+  attendanceReport: { moduleCode: 'report', itemCode: 'attendance-report' },
+  productReport: { moduleCode: 'report', itemCode: 'product-report' },
+  stockInReport: { moduleCode: 'report', itemCode: 'stock-in-report' },
+  stockOutReport: { moduleCode: 'report', itemCode: 'stock-out-report' },
+  currentStockReport: { moduleCode: 'report', itemCode: 'current-stock-report' },
+  stockLedgerReport: { moduleCode: 'report', itemCode: 'stock-ledger-report' },
+  stockAdjustmentReport: { moduleCode: 'report', itemCode: 'stock-adjustment-report' },
 } as const;

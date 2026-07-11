@@ -23,6 +23,15 @@ const navStyle = (isActive: boolean) =>
     : { color: 'var(--color-muted)' };
 
 const FLYOUT_LEFT = 64;
+const HEADER_OFFSET = 72;
+
+const clampFlyoutTop = (centerY: number, itemCount: number) => {
+  const estimatedHeight = 36 + itemCount * 36;
+  const half = estimatedHeight / 2;
+  const minCenter = HEADER_OFFSET + half;
+  const maxCenter = window.innerHeight - 12 - half;
+  return Math.min(Math.max(centerY, minCenter), Math.max(minCenter, maxCenter));
+};
 
 export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
   const location = useLocation();
@@ -292,7 +301,7 @@ export const UserSidebar = ({ collapsed, onToggle }: UserSidebarProps) => {
         <div
           style={{
             position: 'fixed',
-            top: flyout.y,
+            top: clampFlyoutTop(flyout.y, flyout.item.children.length),
             left: FLYOUT_LEFT,
             transform: 'translateY(-50%)',
             backgroundColor: 'var(--color-surface)',

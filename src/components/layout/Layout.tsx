@@ -46,7 +46,7 @@ export const UserLayout = ({ children, title = 'Dashboard', subtitle }: UserLayo
         className={
           isMobile
             ? `fixed inset-y-0 left-0 z-50 transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : 'relative z-10 flex-shrink-0'
+            : 'relative z-50 flex-shrink-0'
         }
       >
         <UserSidebar collapsed={!isMobile && collapsed} onToggle={handleToggle} />
