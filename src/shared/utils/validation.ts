@@ -12,7 +12,7 @@ export type ValidationSchema<T> = Partial<
 export const INDIAN_GST_REGEX =
   /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 export const INDIAN_PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-export const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
+export const INDIAN_MOBILE_REGEX = /^\d{10}$/;
 export const INDIAN_PINCODE_REGEX = /^\d{6}$/;
 export const CODE_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 export const ALPHANUMERIC_CODE_REGEX = /^[A-Za-z0-9_-]+$/;

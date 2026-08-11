@@ -72,6 +72,8 @@ export const UserEditPage = () => {
           gender: (user.gender ?? '') as '' | UserGender,
           dateOfBirth: toDateInput(user.dateOfBirth),
           address: user.address ?? '',
+          password: '',
+          confirmPassword: '',
           status: user.status,
         });
       } catch (err) {
@@ -89,7 +91,7 @@ export const UserEditPage = () => {
     if (!userId || !form) return;
     clearErrors();
 
-    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: false }))) {
+    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: false, requirePassword: false }))) {
       toast.warning('Please fix the highlighted fields.');
       return;
     }

@@ -3,6 +3,7 @@ import type { UserFormValues } from '../../pages/user/users/UserForm';
 
 export const getUserValidationSchema = (options: {
   requireEmployeeCode: boolean;
+  requirePassword: boolean;
 }): ValidationSchema<UserFormValues> => {
   const schema: ValidationSchema<UserFormValues> = {
     firstName: [
@@ -23,6 +24,34 @@ export const getUserValidationSchema = (options: {
     schema.employeeCode = [
       rules.required('Employee code is required'),
       rules.alphanumericCode('Employee code can only contain letters, numbers, hyphens, and underscores'),
+    ];
+  }
+
+  if (options.requirePassword) {
+    schema.password = [
+      rules.required('Password is required'),
+      rules.minLength(6, 'Password must be at least 6 characters'),
+    ];
+    schema.confirmPassword = [
+      rules.required('Confirm password is required'),
+      (value, form) => (value !== form.password ? 'Passwords must match' : undefined),
+    ];
+  } else {
+    schema.password = [
+      (value) => {
+        if (value && value.length > 0 && value.length < 6) {
+          return 'Password must be at least 6 characters';
+        }
+        return undefined;
+      },
+    ];
+    schema.confirmPassword = [
+      (value, form) => {
+        if (form.password && value !== form.password) {
+          return 'Passwords must match';
+        }
+        return undefined;
+      },
     ];
   }
 

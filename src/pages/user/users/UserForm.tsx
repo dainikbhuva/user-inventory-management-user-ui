@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Briefcase, KeyRound, RefreshCw, UserRound } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, KeyRound, RefreshCw, UserRound } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
@@ -25,6 +26,8 @@ export interface UserFormValues {
   gender: '' | UserGender;
   dateOfBirth: string;
   address: string;
+  password: string;
+  confirmPassword: string;
   status: 'active' | 'inactive';
 }
 
@@ -107,6 +110,8 @@ export const UserForm = ({
   onSubmit,
   submitLabel,
 }: UserFormProps) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const isCreate = mode === 'create';
   const set = <K extends keyof UserFormValues>(key: K, val: UserFormValues[K]) =>
     onChange({ ...value, [key]: val });
@@ -117,6 +122,16 @@ export const UserForm = ({
   };
 
   const fieldError = (key: keyof UserFormValues) => errors?.[key];
+
+  const passwordsMatch = Boolean(
+    value.confirmPassword && value.password && value.password === value.confirmPassword
+  );
+  const passwordsMismatch = Boolean(
+    value.confirmPassword && value.password && value.password !== value.confirmPassword
+  );
+  const confirmPasswordError =
+    fieldError('confirmPassword') ||
+    (passwordsMismatch ? 'Passwords do not match' : undefined);
 
   const managerOptions = managers.filter(
     (manager) => manager.status === 'active' && manager.id !== excludeManagerId
@@ -368,21 +383,62 @@ export const UserForm = ({
             description={isCreate ? 'Login credentials and access status.' : 'Portal access status.'}
           >
             <div className="space-y-5">
-              {isCreate ? (
-                <div className="rounded-sm border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-body">
-                  <p className="font-medium text-primary">Auto-generated password</p>
-                  <p className="mt-1 text-muted">
-                    A secure password will be created automatically and emailed to the user&apos;s email address
-                    when you save.
-                  </p>
-                </div>
-              ) : null}
+              <div className="grid w-full gap-5">
+                <FormField label="Password" required={isCreate} error={fieldError('password')}>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={value.password}
+                      onChange={(e) => touch('password', e.target.value)}
+                      placeholder={isCreate ? 'Enter user password' : 'Leave blank to keep current password'}
+                      disabled={isSubmitting}
+                      error={Boolean(fieldError('password'))}
+                      autoComplete={isCreate ? 'new-password' : 'new-password'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-body"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </FormField>
 
-              <StatusToggle
-                checked={value.status === 'active'}
-                onChange={(checked) => set('status', checked ? 'active' : 'inactive')}
-                disabled={isSubmitting}
-              />
+                <FormField label="Confirm password" required={isCreate} error={confirmPasswordError}>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={value.confirmPassword}
+                      onChange={(e) => touch('confirmPassword', e.target.value)}
+                      placeholder={isCreate ? 'Confirm user password' : 'Repeat new password'}
+                      disabled={isSubmitting}
+                      error={Boolean(confirmPasswordError)}
+                      autoComplete={isCreate ? 'new-password' : 'new-password'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((current) => !current)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-body"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {passwordsMatch ? (
+                    <p className="mt-1 text-xs text-emerald-600">Passwords match.</p>
+                  ) : passwordsMismatch ? (
+                    <p className="mt-1 text-xs text-red-600">Passwords do not match.</p>
+                  ) : null}
+                </FormField>
+
+                <StatusToggle
+                  checked={value.status === 'active'}
+                  onChange={(checked) => set('status', checked ? 'active' : 'inactive')}
+                  disabled={isSubmitting}
+                />
+              </div>
             </div>
           </SectionCard>
         </aside>

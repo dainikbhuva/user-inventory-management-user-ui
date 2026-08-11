@@ -31,14 +31,12 @@ export const portalUserService = {
   },
 
   async createUser(payload: CreatePortalUserPayload): Promise<CreatePortalUserResult> {
-    const response = await axiosClient.post<
-      ApiResponse<{ user: PortalUserRecord; emailSent: boolean; emailWarning?: string }>
-    >(API_ENDPOINTS.USERS.LIST, payload);
-    const data = response.data.data!;
+    const response = await axiosClient.post<ApiResponse<{ user: PortalUserRecord }>>(
+      API_ENDPOINTS.USERS.LIST,
+      payload
+    );
     return {
-      user: data.user,
-      emailSent: data.emailSent ?? false,
-      ...(data.emailWarning ? { emailWarning: data.emailWarning } : {}),
+      user: response.data.data!.user,
     };
   },
 

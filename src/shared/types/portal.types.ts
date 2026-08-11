@@ -77,8 +77,7 @@ export interface PermissionOption {
 
 export interface CreatePortalUserResult {
   user: PortalUserRecord;
-  emailSent: boolean;
-  emailWarning?: string;
+
 }
 
 export interface CreatePortalUserPayload {
@@ -96,6 +95,8 @@ export interface CreatePortalUserPayload {
   gender?: UserGender;
   dateOfBirth?: string;
   address?: string;
+  password: string;
+  confirmPassword?: string;
   employeeCode?: string;
   autoGenerateEmployeeCode?: boolean;
   status: 'active' | 'inactive';

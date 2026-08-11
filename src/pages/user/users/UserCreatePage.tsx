@@ -32,6 +32,8 @@ const emptyForm: UserFormValues = {
   gender: '',
   dateOfBirth: '',
   address: '',
+  password: '',
+  confirmPassword: '',
   status: 'active',
 };
 
@@ -104,14 +106,14 @@ export const UserCreatePage = () => {
     event.preventDefault();
     clearErrors();
 
-    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: !autoEmployeeCode }))) {
+    if (!validateFields(form, getUserValidationSchema({ requireEmployeeCode: !autoEmployeeCode, requirePassword: true }))) {
       toast.warning('Please fix the highlighted fields.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const result = await portalUserService.createUser({
+      await portalUserService.createUser({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
@@ -126,20 +128,13 @@ export const UserCreatePage = () => {
         gender: form.gender || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
         address: form.address.trim() || undefined,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
         employeeCode: autoEmployeeCode ? undefined : form.employeeCode.trim().toUpperCase(),
         autoGenerateEmployeeCode: autoEmployeeCode,
         status: form.status,
       });
-      if (result.emailSent) {
-        toast.success('User created. Login password has been sent to their email.');
-      } else {
-        toast.success('User created successfully.');
-        toast.warning(
-          result.emailWarning
-            ? `Welcome email could not be sent: ${result.emailWarning}`
-            : 'Welcome email could not be sent. Share login credentials with the user manually.'
-        );
-      }
+      toast.success('User created successfully.');
       navigate(listPath);
     } catch (err) {
       toast.error(applyApiErrors(err, 'Failed to create user'));
